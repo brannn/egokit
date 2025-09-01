@@ -149,6 +149,29 @@ Later scopes override earlier ones when rule IDs match. This enables organizatio
 
 The ego layer fine-tunes agent responses to match your organizational standards. Configure communication style, verbosity preferences, and operational modes to ensure consistent agent behavior that aligns with your team's working style across all interactions.
 
+### Claude Code Integration
+
+EgoKit generates custom slash commands that integrate directly with Claude Code, providing powerful workflow controls:
+
+```bash
+# Policy enforcement commands
+/validate              # Run comprehensive policy validation
+/security-review       # Switch to heightened security analysis mode
+/compliance-check      # Assess overall standards adherence
+
+# Behavioral calibration commands  
+/refresh-policies      # Reload latest configurations to prevent drift
+/checkpoint           # Validate policy recall and compliance status
+/before-code          # Pre-flight checklist before code generation
+
+# Mode switching for different contexts
+/mode-implementer     # Focus on clean, efficient implementation
+/mode-reviewer        # Critical analysis and improvement suggestions
+/mode-security        # Security-first evaluation and threat modeling
+```
+
+These commands maintain consistent agent behavior throughout development sessions. The `/refresh-policies` command prevents drift by reloading your organizational standards every 10-15 interactions. The `/before-code` checklist ensures compliance before any code generation, while mode switching adapts the agent's focus to match your current development context.
+
 ### Memory Persistence Mechanisms
 
 EgoKit employs multiple reinforcement strategies to ensure AI agents maintain policy awareness throughout their sessions. The system injects organizational policies through system prompt fragments that establish constitutional constraints, making policies take precedence over conflicting requests. Custom slash commands provide interactive checkpoints for memory validation and policy refresh at regular intervals. Redundant policy documents placed strategically across the project directory create multiple touchpoints for policy reinforcement.
