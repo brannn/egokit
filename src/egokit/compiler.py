@@ -663,7 +663,7 @@ class ArtifactCompiler:
             "```",
             "",
             "### 3. Security Requirements",
-            "Name 2 security requirements you must always follow:",
+            "Name top security requirements you must always follow:",
             "Format: POLICY-ID: Description",
             "```",
             "1. _______________",
