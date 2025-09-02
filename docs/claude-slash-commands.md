@@ -12,7 +12,7 @@ Claude Code slash commands are markdown files placed in the `.claude/commands/` 
 
 Runs comprehensive policy validation against your codebase. This command executes the EgoKit validation engine to check all changed files against your organization's policy rules. The validation covers security standards, code quality requirements, and documentation guidelines as defined in your policy charter.
 
-The command runs `ego validate --changed` to check only modified files, making it efficient for iterative development. After validation, it provides a detailed report of any policy violations found, including severity levels and suggested fixes.
+The command runs `python3 -m egokit.cli validate --changed` to check only modified files, making it efficient for iterative development. After validation, it provides a detailed report of any policy violations found, including severity levels and suggested fixes.
 
 ### /compliance-check
 
@@ -78,7 +78,7 @@ Performs an explicit policy recall without full refresh, useful when you need qu
 
 These slash commands work in conjunction with other EgoKit-generated artifacts. The CLAUDE.md file provides the persistent policy configuration that these commands reference and enforce. The settings.json file configures behavioral defaults that influence how commands execute. The system prompt fragments ensure that policy awareness persists even when commands are not explicitly invoked.
 
-Commands automatically adapt to your organization's specific policies. When you run `ego apply` to generate Claude Code artifacts, the command files are customized with your actual policy IDs, rules, severity levels, and behavioral preferences. This ensures that slash commands enforce your specific standards rather than generic guidelines.
+Commands automatically adapt to your organization's specific policies. When you run `python3 -m egokit.cli apply` to generate Claude Code artifacts, the command files are customized with your actual policy IDs, rules, severity levels, and behavioral preferences. This ensures that slash commands enforce your specific standards rather than generic guidelines.
 
 ## Usage Patterns
 
