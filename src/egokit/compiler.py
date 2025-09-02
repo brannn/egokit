@@ -633,75 +633,54 @@ class ArtifactCompiler:
     
     def _generate_recall_command(self, rules: List[PolicyRule]) -> str:
         """Generate policy recall test command."""
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL][:3]
+        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
+        critical_count = len(critical_rules)
         
         sections = [
+            "---",
+            "description: Test memory of critical organizational policies",
+            "allowed-tools: Read(.claude/system-prompt-fragments/*.txt)",
+            "---",
+            "",
             "# 🧠 Policy Recall Test",
             "",
-            "Tests your memory of critical organizational policies.",
+            "Test your understanding of this organization's critical policies.",
             "",
-            "## Usage",
-            "`/recall-policies`",
+            "## Instructions",
+            "Complete this self-assessment to verify policy retention:",
             "",
-            "## Memory Test",
-            "",
-            "Without looking at any files, answer these questions:",
-            "",
-            "### 1. Critical Policies",
-            "What are the top 3 critical policies you must never violate?",
-            "Format: POLICY-ID: Description",
+            "### 1. Critical Standards",
+            f"State {min(3, critical_count)} critical policies from memory:",
             "```",
-            "1. _______________",
-            "2. _______________", 
-            "3. _______________",
+            "POLICY-ID: Brief description",
+            "POLICY-ID: Brief description", 
+            "POLICY-ID: Brief description",
             "```",
             "",
-            "### 2. Self-Assessment",
-            "Provide a summary of your policy retention and current operational state:",
+            "### 2. Current Context",
+            "Assess your operational awareness:",
             "```",
-            "Active Scopes: _______________",
-            "Total Rules: _______________", 
-            "Critical Rules: _______________",
-            "Domain Focus: _______________",
-            "Confidence Score: _______________% - Assessment reasoning",
-            "```",
-            "",
-            "### 3. Your Current Role",
-            "What role are you acting as for this organization?",
-            "```",
-            "Role: _______________",
+            "Role: [Your assigned role]",
+            "Domain: [Primary focus area]",
+            f"Active Rules: {len(rules)} total, {critical_count} critical",
+            "Confidence: [X]% - [Brief reasoning]",
             "```",
             "",
-            "### 4. Security Requirements",
-            "Name top security requirements I must follow:",
-            "Format: POLICY-ID: Description",
-            "```",
-            "1. _______________",
-            "2. _______________",
-            "```",
+            "### 3. Constitution Awareness",
+            f"You should remember {critical_count} CRITICAL rules from Article I",
+            "State which article of the constitution applies to your current task.",
             "",
-            "### 5. Validation Checklist",
-            "What should you be aware of before generating code?",
-            "Format: Description (POLICY-ID) or general principle",
-            "```",
-            "□ _______________",
-            "□ _______________",
-            "□ _______________",
-            "```",
+            "### 4. Remediation if Needed",
+            "If you cannot recall policies clearly:",
+            "1. Re-read CLAUDE.md immediately",
+            "2. Review .claude/system-prompt-fragments/egokit-policies.txt",
+            "3. Run `/refresh-policies` to reload configuration",
             "",
-            "## Answer Key",
-            "After answering, check against:",
+            "## Success Criteria",
+            "✅ Can recall all critical policies",
+            "✅ Recent work complies with standards",
+            "✅ Clear which constitutional articles apply",
         ]
-        
-        if critical_rules:
-            sections.append("- Critical policies include:")
-            for rule in critical_rules:
-                sections.append(f"  - {rule.id}: {rule.rule[:50]}...")
-        
-        sections.extend([
-            "",
-            "If you scored less than 80%, immediately run `/refresh-policies`",
-        ])
         
         return "\n".join(sections)
     
