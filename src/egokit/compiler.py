@@ -654,7 +654,7 @@ class ArtifactCompiler:
             "```",
             "",
             "### 4. Validation Checklist",
-            "What should you check before generating code?",
+            "What should you be aware of before generating code?",
             "```",
             "□ _______________",
             "□ _______________",
