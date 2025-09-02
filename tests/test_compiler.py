@@ -236,7 +236,7 @@ class TestArtifactCompiler:
         assert "Validate Code Against Organizational Standards" in validate_cmd
         assert "EgoKit policy validation" in validate_cmd
         assert "ego validate --changed" in validate_cmd
-        assert "Currently enforcing 3 organizational standards" in validate_cmd  # SEC-001, QUAL-001, DOCS-001
+        assert "Enforcing 3 organizational standards" in validate_cmd  # SEC-001, QUAL-001, DOCS-001
         
         # Test security review command
         security_cmd = artifacts[".claude/commands/security-review.md"]
