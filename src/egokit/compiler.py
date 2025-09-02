@@ -195,7 +195,7 @@ class ArtifactCompiler:
     
     def _extract_allowed_operations(self, rules: List[PolicyRule]) -> List[str]:
         """Extract allowed operations from policy rules."""
-        allowed = ["read", "write", "git"]
+        allowed = ["Read", "Write", "Git"]
         
         # Always allow basic development operations unless explicitly restricted
         return allowed
@@ -221,12 +221,12 @@ class ArtifactCompiler:
             if "database" in rule.rule.lower():
                 ask_for.append("database_operations")
             if "deploy" in rule.rule.lower():
-                ask_for.append("deployment_changes")
+                ask_for.append("Deployment_changes")
             if "security" in rule.rule.lower():
-                ask_for.append("security_modifications")
+                ask_for.append("Security_modifications")
         
         # Always ask for potentially destructive operations
-        ask_for.extend(["git:push:main", "file:delete:batch"])
+        ask_for.extend(["Git:push:main", "File:delete:batch"])
         
         return list(set(ask_for))
     
