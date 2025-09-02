@@ -40,17 +40,27 @@ A scheduled reminder command that prompts for policy refresh at regular interval
 
 ## Mode Switching Commands
 
-### /mode-implementer
+Mode switching commands are generated dynamically based on your ego configuration. The available modes depend on what you've defined in your `.egokit/policy-registry/ego/global.yaml` file under the `modes:` section.
+
+### Default Available Modes
+
+The standard ego configuration includes these modes:
+
+#### /mode-implementer
 
 Switches to implementation-focused mode where the agent prioritizes clean, efficient code generation following established patterns. In this mode, responses emphasize practical implementation details, code organization, and adherence to project conventions. The verbosity adjusts to match the mode's configuration, typically providing balanced explanations focused on the code itself.
 
-### /mode-reviewer
+#### /mode-reviewer
 
 Activates code review mode where the agent adopts a critical analysis perspective. Responses focus on identifying potential issues, suggesting improvements, and ensuring compliance with all quality standards. The agent examines code for security vulnerabilities, performance concerns, architectural consistency, and adherence to team conventions.
 
-### /mode-security
+#### /mode-security
 
 Engages specialized security analysis mode with heightened attention to vulnerability detection and threat modeling. The agent evaluates all code through a security lens, considering attack vectors, input validation, authentication flows, and data protection. This mode is essential when implementing security-critical features or reviewing sensitive code paths.
+
+### Custom Modes
+
+You can define additional modes in your ego configuration. Each mode you define will automatically generate a corresponding `/mode-{name}` slash command. See the `examples/ai-modes/` directory for examples of extended mode configurations including architect, debugger, educator, mentor, optimizer, prototyper, and documenter modes.
 
 ## Pre-Flight Commands
 

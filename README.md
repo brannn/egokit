@@ -164,9 +164,9 @@ EgoKit generates custom slash commands that integrate directly with Claude Code,
 /checkpoint           # Validate policy recall and compliance status
 /before-code          # Pre-flight checklist before code generation
 
-# Mode switching for different contexts
+# Mode switching (based on your ego configuration)
 /mode-implementer     # Focus on clean, efficient implementation
-/mode-reviewer        # Critical analysis and improvement suggestions
+/mode-reviewer        # Critical analysis and improvement suggestions  
 /mode-security        # Security-first evaluation and threat modeling
 ```
 
