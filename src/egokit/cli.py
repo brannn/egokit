@@ -447,27 +447,39 @@ def doctor(
         if registry_path is None:
             registry_path = Path.cwd() / ".egokit" / "policy-registry"
         
+        registry = PolicyRegistry(registry_path)
+        
         # Auto-detect scopes if none provided
         if scope is None:
             scope = []
             
-            # Check for scope files in registry root (excluding charter.yaml)
+            # First, try to detect scopes from charter.yaml
+            try:
+                charter = registry.load_charter()
+                # Get all scope names defined in the charter
+                charter_scopes = list(charter.scopes.keys())
+                scope.extend(charter_scopes)
+            except Exception:
+                # If charter loading fails, fall back to file detection
+                pass
+            
+            # Also check for separate scope files in registry root (excluding charter.yaml)
             for scope_file in registry_path.glob("*.yaml"):
                 if scope_file.name != "charter.yaml":
                     scope_name = scope_file.stem
-                    scope.append(scope_name)
+                    if scope_name not in scope:  # Avoid duplicates
+                        scope.append(scope_name)
             
-            # Always include global scope if it exists
+            # Always include global scope if it exists as separate file
             ego_global_path = registry_path / "ego" / "global.yaml"
-            if ego_global_path.exists():
+            if ego_global_path.exists() and "global" not in scope:
                 scope.append("global")
             
             # Default to global only if no scopes found
             if not scope:
                 scope = ["global"]
-        
-        registry = PolicyRegistry(registry_path)
-        charter = registry.load_charter()
+        else:
+            charter = registry.load_charter()
         ego_config = registry.merge_ego_configs(scope)
         merged_rules = registry.merge_scope_rules(charter, scope)
         
