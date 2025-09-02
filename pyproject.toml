@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "egokit"
-version = "0.3.8"
+version = "0.3.9"
 description = "Policy Engine & Scaffolding for AI coding agents"
 readme = "README.md"
 requires-python = ">=3.10"
