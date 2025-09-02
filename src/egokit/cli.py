@@ -435,17 +435,36 @@ def doctor(
         "--registry",
         help="Policy registry path",
     ),
-    scope: List[str] = typer.Option(
-        ["global"],
+    scope: Optional[List[str]] = typer.Option(
+        None,
         "--scope",
         "-s",
-        help="Scope precedence to analyze",
+        help="Scope precedence to analyze (auto-detects if not specified)",
     ),
 ) -> None:
     """Show effective policy configuration and scope resolution."""
     try:
         if registry_path is None:
             registry_path = Path.cwd() / ".egokit" / "policy-registry"
+        
+        # Auto-detect scopes if none provided
+        if scope is None:
+            scope = []
+            
+            # Check for scope files in registry root (excluding charter.yaml)
+            for scope_file in registry_path.glob("*.yaml"):
+                if scope_file.name != "charter.yaml":
+                    scope_name = scope_file.stem
+                    scope.append(scope_name)
+            
+            # Always include global scope if it exists
+            ego_global_path = registry_path / "ego" / "global.yaml"
+            if ego_global_path.exists():
+                scope.append("global")
+            
+            # Default to global only if no scopes found
+            if not scope:
+                scope = ["global"]
         
         registry = PolicyRegistry(registry_path)
         charter = registry.load_charter()
