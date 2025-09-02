@@ -81,6 +81,50 @@ Summary of changes:
 git push origin vX.Y.Z
 ```
 
+### Version Synchronization Requirements
+
+**CRITICAL**: Git tags and pyproject.toml versions must always be synchronized. Failure to maintain this synchronization results in incorrect package versions and deployment issues.
+
+**Required Process**:
+1. **Update pyproject.toml first**: Change the version number in the `[project]` section
+2. **Commit the version bump**: Create a dedicated commit for the version change
+3. **Tag the version commit**: Apply the git tag to the commit containing the updated pyproject.toml
+4. **Verify synchronization**: Ensure the git tag points to a commit where pyproject.toml matches the tag version
+
+**Common Mistake - DO NOT DO**:
+```bash
+# ❌ WRONG: Tagging before updating pyproject.toml
+git tag -a v1.2.3 -m "Release 1.2.3"    # pyproject.toml still says 1.2.2
+git push origin v1.2.3                  # Package builds as 1.2.2, not 1.2.3
+```
+
+**Correct Process**:
+```bash
+# ✅ CORRECT: Update pyproject.toml first, then tag
+sed -i 's/version = "1.2.2"/version = "1.2.3"/' pyproject.toml
+git add pyproject.toml
+git commit -m "Bump version to 1.2.3"
+git tag -a v1.2.3 -m "Release version 1.2.3"
+git push && git push origin v1.2.3
+```
+
+**Fixing Version Mismatch**:
+If a tag was created before updating pyproject.toml:
+```bash
+# Delete incorrect tag
+git tag -d v1.2.3
+git push origin :refs/tags/v1.2.3
+
+# Update pyproject.toml and commit
+sed -i 's/version = "1.2.2"/version = "1.2.3"/' pyproject.toml  
+git add pyproject.toml
+git commit -m "Bump version to 1.2.3"
+
+# Recreate tag on correct commit
+git tag -a v1.2.3 -m "Release version 1.2.3"
+git push origin v1.2.3
+```
+
 ### Release Branch Strategy
 
 Releases follow a simplified git flow:
