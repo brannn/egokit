@@ -13,9 +13,9 @@ from rich.console import Console
 from rich.table import Table
 
 try:
-    from importlib.metadata import version
+    from importlib.metadata import version as get_version
 except ImportError:
-    from importlib_metadata import version
+    from importlib_metadata import version as get_version
 
 from .compiler import ArtifactCompiler, ArtifactInjector
 from .detectors import DetectorLoader
@@ -30,6 +30,47 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+
+
+def version_callback(value: bool) -> None:
+    """Callback for --version flag."""
+    if value:
+        try:
+            pkg_version = get_version("egokit")
+            console.print(f"EgoKit version {pkg_version}")
+        except Exception:
+            # Try to read version from pyproject.toml for development installs
+            try:
+                pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+                if pyproject_path.exists():
+                    content = pyproject_path.read_text()
+                    # Simple regex to find version = "x.y.z"
+                    import re
+                    match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
+                    if match:
+                        dev_version = match.group(1)
+                        console.print(f"EgoKit version {dev_version} (development)")
+                    else:
+                        console.print("EgoKit version unknown")
+                else:
+                    console.print("EgoKit version unknown")
+            except Exception:
+                console.print("EgoKit version unknown")
+        raise typer.Exit()
+
+
+@app.callback()
+def main_callback(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=version_callback,
+        is_eager=True,
+        help="Show version and exit",
+    ),
+) -> None:
+    """EgoKit: Policy Engine & Scaffolding for AI coding agents."""
+    pass
 
 
 @app.command()
@@ -733,7 +774,7 @@ def watch(
 def version() -> None:
     """Show EgoKit version information."""
     try:
-        pkg_version = version("egokit")
+        pkg_version = get_version("egokit")
         console.print(f"EgoKit version {pkg_version}")
     except Exception:
         # Try to read version from pyproject.toml for development installs
