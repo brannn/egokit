@@ -12,6 +12,11 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
+
 from .compiler import ArtifactCompiler, ArtifactInjector
 from .detectors import DetectorLoader
 from .exceptions import EgoKitError
@@ -722,6 +727,32 @@ def watch(
     except EgoKitError as e:
         console.print(f"[red]✗[/red] {e}")
         raise typer.Exit(1)
+
+
+@app.command()
+def version() -> None:
+    """Show EgoKit version information."""
+    try:
+        pkg_version = version("egokit")
+        console.print(f"EgoKit version {pkg_version}")
+    except Exception:
+        # Try to read version from pyproject.toml for development installs
+        try:
+            pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+            if pyproject_path.exists():
+                content = pyproject_path.read_text()
+                # Simple regex to find version = "x.y.z"
+                import re
+                match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
+                if match:
+                    dev_version = match.group(1)
+                    console.print(f"EgoKit version {dev_version} (development)")
+                else:
+                    console.print("EgoKit version unknown")
+            else:
+                console.print("EgoKit version unknown")
+        except Exception:
+            console.print("EgoKit version unknown")
 
 
 def _discover_registry() -> Optional[Path]:

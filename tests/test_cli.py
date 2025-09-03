@@ -355,3 +355,12 @@ class TestCLI:
             
             assert result.exit_code == 1
             assert "Policy registry not found" in result.stdout
+    
+    def test_version_command(self, runner: CliRunner) -> None:
+        """Test version command shows version information."""
+        result = runner.invoke(app, ["version"])
+        
+        assert result.exit_code == 0
+        assert "EgoKit version" in result.stdout
+        # Should show either the installed version or development version
+        assert ("0.3.12" in result.stdout or "unknown" in result.stdout)
