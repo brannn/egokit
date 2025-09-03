@@ -263,7 +263,7 @@ class TestCLI:
             # Check subprocess was called with correct arguments
             mock_subprocess.assert_called_once()
             call_args = mock_subprocess.call_args[0][0]
-            assert "claude-code" in call_args
+            assert "claude" in call_args
             assert "-p" in call_args
             assert "--append-system-prompt" in call_args
             assert "Test prompt for Claude Code" in call_args

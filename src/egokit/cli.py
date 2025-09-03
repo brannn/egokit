@@ -616,7 +616,7 @@ def claude_headless(
                     system_prompt_file = Path(f.name)
         
         # Execute Claude Code headless
-        cmd = ["claude-code", "-p"]
+        cmd = ["claude", "-p"]
         if system_prompt_file:
             cmd.extend(["--append-system-prompt", str(system_prompt_file)])
         cmd.append(prompt)
@@ -632,7 +632,7 @@ def claude_headless(
             console.print(f"[red]✗[/red] Claude Code execution failed: {e}")
             raise typer.Exit(1)
         except FileNotFoundError:
-            console.print("[red]✗[/red] claude-code command not found. Please install Claude Code first.")
+            console.print("[red]✗[/red] claude command not found. Please install Claude Code first.")
             raise typer.Exit(1)
             
     except EgoKitError as e:
