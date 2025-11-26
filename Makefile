@@ -1,4 +1,4 @@
-.PHONY: help lint audit test test-fast test-cov clean install install-dev sync
+.PHONY: help lint audit test test-fast test-cov clean install install-dev sync build publish release
 
 help:  ## Show this help message
 	@echo "Available commands:"
@@ -40,9 +40,45 @@ test-cov:  ## Run tests and generate HTML coverage report
 	@echo "Coverage report generated in htmlcov/index.html"
 
 clean:  ## Clean up generated files and caches
-	rm -rf build/ dist/ *.egg-info .coverage htmlcov/ .pytest_cache/ .venv/
+	rm -rf build/ dist/ *.egg-info .coverage htmlcov/ .pytest_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
+
+build: clean  ## Build source and wheel distributions
+	uv build --no-sources
+	@echo "Built packages in dist/"
+	@ls -la dist/
+
+publish:  ## Publish to PyPI (requires UV_PUBLISH_TOKEN env var)
+	@if [ -z "$$UV_PUBLISH_TOKEN" ]; then \
+		echo "Error: UV_PUBLISH_TOKEN environment variable not set"; \
+		echo "Get a token from https://pypi.org/manage/account/token/"; \
+		exit 1; \
+	fi
+	uv publish
+
+publish-test:  ## Publish to TestPyPI (requires UV_PUBLISH_TOKEN env var)
+	@if [ -z "$$UV_PUBLISH_TOKEN" ]; then \
+		echo "Error: UV_PUBLISH_TOKEN environment variable not set"; \
+		echo "Get a token from https://test.pypi.org/manage/account/token/"; \
+		exit 1; \
+	fi
+	uv publish --publish-url https://test.pypi.org/legacy/
+
+release: test build publish  ## Run tests, build, and publish to PyPI
+	@echo "Released version $$(uv version --short)"
+
+version:  ## Show current version
+	@uv version
+
+version-bump-patch:  ## Bump patch version (0.0.X)
+	uv version --bump patch
+
+version-bump-minor:  ## Bump minor version (0.X.0)
+	uv version --bump minor
+
+version-bump-major:  ## Bump major version (X.0.0)
+	uv version --bump major
 
 # Convenience aliases
 check: audit  ## Alias for audit

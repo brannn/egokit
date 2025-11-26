@@ -8,15 +8,14 @@ version = "1.0.0"
 description = "Policy Engine & Scaffolding for AI coding agents"
 readme = "README.md"
 requires-python = ">=3.13"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "EgoKit Contributors"},
 ]
 keywords = ["ai", "coding", "policy", "governance", "claude", "agents"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",

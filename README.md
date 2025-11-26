@@ -1,5 +1,9 @@
 # EgoKit
 
+[![PyPI version](https://img.shields.io/pypi/v/egokit.svg)](https://pypi.org/project/egokit/)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 EgoKit is a stateless, file-based compiler that transforms organizational policies into AGENTS.md content and AI-native slash command prompts. EgoKit generates the rules; modern AI coding tools interpret and execute them.
 
 ## Table of Contents
