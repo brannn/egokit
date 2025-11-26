@@ -15,7 +15,7 @@ from egokit.models import (
 
 class TestPolicyRule:
     """Test PolicyRule validation."""
-    
+
     def test_valid_rule(self) -> None:
         """Test creating a valid policy rule."""
         rule = PolicyRule(
@@ -26,7 +26,7 @@ class TestPolicyRule:
         )
         assert rule.id == "SEC-001"
         assert rule.severity == Severity.CRITICAL
-    
+
     def test_invalid_rule_id(self) -> None:
         """Test invalid rule ID format."""
         with pytest.raises(ValidationError, match="Rule ID must follow format"):
@@ -36,7 +36,7 @@ class TestPolicyRule:
                 severity=Severity.WARNING,
                 detector="test.v1",
             )
-    
+
     def test_invalid_detector_name(self) -> None:
         """Test invalid detector name format."""
         with pytest.raises(ValidationError, match="Detector must follow format"):
@@ -50,7 +50,7 @@ class TestPolicyRule:
 
 class TestPolicyCharter:
     """Test PolicyCharter validation."""
-    
+
     def test_valid_charter(self) -> None:
         """Test creating a valid policy charter."""
         charter = PolicyCharter(
@@ -63,13 +63,13 @@ class TestPolicyCharter:
                             "rule": "Never commit secrets",
                             "severity": "critical",
                             "detector": "secret.regex.v1",
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             },
         )
         assert charter.version == "1.0.0"
-    
+
     def test_invalid_version(self) -> None:
         """Test invalid version format."""
         with pytest.raises(ValidationError, match="Version must follow semantic versioning"):
@@ -81,7 +81,7 @@ class TestPolicyCharter:
 
 class TestEgoConfig:
     """Test EgoConfig validation."""
-    
+
     def test_valid_ego_config(self) -> None:
         """Test creating a valid ego configuration."""
         config = EgoConfig(
@@ -97,7 +97,7 @@ class TestEgoConfig:
 
 class TestEgoCharter:
     """Test EgoCharter validation."""
-    
+
     def test_valid_ego_charter(self) -> None:
         """Test creating a valid ego charter."""
         charter = EgoCharter(

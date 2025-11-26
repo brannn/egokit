@@ -2,28 +2,25 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 import yaml
 from typer.testing import CliRunner
 
 from egokit.cli import app
-from egokit.exceptions import EgoKitError
-from egokit.models import Severity
 from egokit.registry import PolicyRegistry
 
 
 class TestEgoKitIntegration:
     """Test complete EgoKit workflow integration."""
-    
+
     @pytest.fixture
     def complete_registry(self) -> Path:
         """Create a comprehensive policy registry for testing."""
         with tempfile.TemporaryDirectory() as temp_dir:
             registry_path = Path(temp_dir) / ".egokit" / "policy-registry"
             registry_path.mkdir(parents=True)
-            
+
             # Comprehensive charter with multiple rule types
             charter_data = {
                 "version": "1.2.0",
@@ -38,16 +35,16 @@ class TestEgoKitIntegration:
                                 "auto_fix": False,
                                 "example_violation": "api_key = 'sk-123456789abcdef'",
                                 "example_fix": "api_key = os.environ['API_KEY']",
-                                "tags": ["security", "credentials", "git"]
+                                "tags": ["security", "credentials", "git"],
                             },
                             {
-                                "id": "SEC-002", 
+                                "id": "SEC-002",
                                 "rule": "Use HTTPS for all external API calls",
                                 "severity": "critical",
-                                "detector": "network.https.v1", 
+                                "detector": "network.https.v1",
                                 "auto_fix": True,
-                                "tags": ["security", "network"]
-                            }
+                                "tags": ["security", "network"],
+                            },
                         ],
                         "code_quality": [
                             {
@@ -58,16 +55,16 @@ class TestEgoKitIntegration:
                                 "auto_fix": True,
                                 "example_violation": "def process_data(data):",
                                 "example_fix": "def process_data(data: Dict[str, Any]) -> List[str]:",
-                                "tags": ["python", "typing", "quality"]
+                                "tags": ["python", "typing", "quality"],
                             },
                             {
                                 "id": "QUAL-002",
                                 "rule": "Functions must not exceed 50 lines",
-                                "severity": "warning", 
+                                "severity": "warning",
                                 "detector": "python.complexity.length.v1",
                                 "auto_fix": False,
-                                "tags": ["python", "complexity"]
-                            }
+                                "tags": ["python", "complexity"],
+                            },
                         ],
                         "docs": [
                             {
@@ -78,47 +75,47 @@ class TestEgoKitIntegration:
                                 "auto_fix": False,
                                 "example_violation": "This amazing feature is world-class",
                                 "example_fix": "This feature provides X functionality",
-                                "tags": ["documentation", "style", "marketing"]
-                            }
-                        ]
+                                "tags": ["documentation", "style", "marketing"],
+                            },
+                        ],
                     },
                     "teams/backend": {
                         "security": [
                             {
-                                "id": "BACK-001", 
+                                "id": "BACK-001",
                                 "rule": "All database queries must use parameterized statements",
                                 "severity": "critical",
                                 "detector": "sql.injection.v1",
                                 "auto_fix": False,
-                                "tags": ["security", "database", "sql"]
-                            }
+                                "tags": ["security", "database", "sql"],
+                            },
                         ],
                         "code_quality": [
                             {
                                 "id": "BACK-002",
                                 "rule": "Use dependency injection for external services",
                                 "severity": "warning",
-                                "detector": "python.dependency.injection.v1", 
+                                "detector": "python.dependency.injection.v1",
                                 "auto_fix": False,
-                                "tags": ["architecture", "testing"]
-                            }
-                        ]
-                    }
+                                "tags": ["architecture", "testing"],
+                            },
+                        ],
+                    },
                 },
                 "metadata": {
                     "description": "Complete organizational policy charter",
                     "maintainer": "Platform Engineering Team",
-                    "last_updated": "2025-01-01"
-                }
+                    "last_updated": "2025-01-01",
+                },
             }
-            
+
             with open(registry_path / "charter.yaml", "w") as f:
                 yaml.dump(charter_data, f)
-            
+
             # Complete ego configurations
             ego_dir = registry_path / "ego"
             ego_dir.mkdir()
-            
+
             # Global ego configuration
             global_ego = {
                 "version": "1.0.0",
@@ -130,77 +127,77 @@ class TestEgoKitIntegration:
                         "formatting": [
                             "code-with-comments",
                             "bullet-lists-for-steps",
-                            "examples-when-helpful"
-                        ]
+                            "examples-when-helpful",
+                        ],
                     },
                     "defaults": {
                         "structure": "overview → implementation → validation → documentation",
                         "code_style": "Follow established project conventions",
                         "documentation": "clear, concise, actionable",
-                        "testing": "unit tests with meaningful assertions"
+                        "testing": "unit tests with meaningful assertions",
                     },
                     "reviewer_checklist": [
                         "Code follows established patterns and conventions",
-                        "Type hints are comprehensive and accurate", 
+                        "Type hints are comprehensive and accurate",
                         "Error handling is appropriate and informative",
                         "Documentation is clear and up-to-date",
                         "Tests cover critical functionality",
-                        "Security best practices are followed"
+                        "Security best practices are followed",
                     ],
                     "ask_when_unsure": [
                         "Breaking changes to public APIs",
                         "Security-sensitive modifications",
                         "Performance-critical optimizations",
-                        "Database schema changes"
+                        "Database schema changes",
                     ],
                     "modes": {
                         "implementer": {
                             "verbosity": "balanced",
-                            "focus": "clean implementation with good practices"
+                            "focus": "clean implementation with good practices",
                         },
                         "reviewer": {
                             "verbosity": "detailed",
-                            "focus": "thorough analysis and constructive feedback"
+                            "focus": "thorough analysis and constructive feedback",
                         },
                         "security": {
                             "verbosity": "detailed",
-                            "focus": "security implications and threat modeling"
-                        }
-                    }
-                }
+                            "focus": "security implications and threat modeling",
+                        },
+                    },
+                },
             }
-            
+
             with open(ego_dir / "global.yaml", "w") as f:
                 yaml.dump(global_ego, f)
-            
+
             # Team-specific ego configuration
             (ego_dir / "teams").mkdir()
             backend_ego = {
                 "version": "1.0.0",
                 "ego": {
-                    "role": "Backend Engineer", 
+                    "role": "Backend Engineer",
                     "tone": {
                         "voice": "technical, direct, security-conscious",
-                        "verbosity": "detailed"
+                        "verbosity": "detailed",
                     },
                     "defaults": {
-                        "structure": "security → performance → implementation → monitoring"
+                        "structure": "security → performance → implementation → monitoring",
                     },
                     "reviewer_checklist": [
                         "Database operations are secure and efficient",
                         "API endpoints have proper authentication",
-                        "Error responses don't leak sensitive information"
-                    ]
-                }
+                        "Error responses don't leak sensitive information",
+                    ],
+                },
             }
-            
+
             with open(ego_dir / "teams" / "backend.yaml", "w") as f:
                 yaml.dump(backend_ego, f)
-            
+
             # Create schemas directory for validation
             schemas_dir = registry_path / "schemas"
             schemas_dir.mkdir()
-            
+
             # Create minimal schemas
             charter_schema = {
                 "$schema": "http://json-schema.org/draft-07/schema#",
@@ -208,38 +205,38 @@ class TestEgoKitIntegration:
                 "required": ["version", "scopes"],
                 "properties": {
                     "version": {"type": "string"},
-                    "scopes": {"type": "object"}
-                }
+                    "scopes": {"type": "object"},
+                },
             }
-            
+
             import json
             with open(schemas_dir / "charter.schema.json", "w") as f:
                 json.dump(charter_schema, f)
-            
+
             ego_schema = {
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "type": "object",
                 "properties": {
                     "version": {"type": "string"},
-                    "ego": {"type": "object"}
-                }
+                    "ego": {"type": "object"},
+                },
             }
-            
+
             with open(schemas_dir / "ego.schema.json", "w") as f:
                 json.dump(ego_schema, f)
-            
+
             yield registry_path
-    
+
     @pytest.fixture
     def sample_project(self) -> Path:
         """Create a sample project with various file types for testing."""
         with tempfile.TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir) / "sample_project"
             project_path.mkdir()
-            
+
             # Python files for testing
             (project_path / "src").mkdir()
-            
+
             # Good Python file
             good_py = project_path / "src" / "good_example.py"
             good_py.write_text("""
@@ -258,9 +255,9 @@ def process_user_data(data: Dict[str, Any]) -> List[str]:
             results.append(item['name'])
     return results
 """)
-            
+
             # Bad Python file with violations
-            bad_py = project_path / "src" / "bad_example.py" 
+            bad_py = project_path / "src" / "bad_example.py"
             bad_py.write_text("""
 def process_data(data):  # Missing type hints - QUAL-001 violation
     api_key = "sk-123456789abcdef"  # Hardcoded secret - SEC-001 violation  
@@ -295,7 +292,7 @@ def process_data(data):  # Missing type hints - QUAL-001 violation
     
     return final_result  # Function ends at line ~35+ (exceeds 50 line rule)
 """)
-            
+
             # Documentation with violations
             readme = project_path / "README.md"
             readme.write_text("""
@@ -309,19 +306,19 @@ This world-class, incredible, revolutionary project is the best solution ever cr
 - Unmatched reliability  
 - Industry-leading security
 """)
-            
+
             yield project_path
-    
+
     @pytest.fixture
     def runner(self) -> CliRunner:
         """CLI test runner."""
         return CliRunner()
-    
+
     def test_complete_workflow_registry_to_artifacts(
         self,
         complete_registry: Path,
         sample_project: Path,
-        runner: CliRunner
+        runner: CliRunner,
     ) -> None:
         """Test complete workflow from registry to generated artifacts."""
         # Step 1: Generate artifacts using apply command (AGENTS.md-first approach)
@@ -378,7 +375,7 @@ This world-class, incredible, revolutionary project is the best solution ever cr
         """Test that hierarchical scope precedence works correctly."""
         registry = PolicyRegistry(complete_registry)
         charter = registry.load_charter()
-        
+
         # Test global scope only
         global_rules = registry.merge_scope_rules(charter, ["global"])
         global_rule_ids = {rule.id for rule in global_rules}
@@ -386,69 +383,69 @@ This world-class, incredible, revolutionary project is the best solution ever cr
         assert "QUAL-001" in global_rule_ids
         assert "DOCS-001" in global_rule_ids
         assert "BACK-001" not in global_rule_ids  # Team-specific rule
-        
+
         # Test with team scope (should include both global and team rules)
         merged_rules = registry.merge_scope_rules(charter, ["global", "teams/backend"])
         merged_rule_ids = {rule.id for rule in merged_rules}
         assert "SEC-001" in merged_rule_ids  # Global rule
         assert "BACK-001" in merged_rule_ids  # Team rule
         assert "BACK-002" in merged_rule_ids  # Team rule
-        
+
         # Should have more rules with team scope
         assert len(merged_rules) > len(global_rules)
-        
+
         # Test ego config precedence
         global_ego = registry.merge_ego_configs(["global"])
         assert global_ego.role == "Senior Software Engineer"
-        
+
         merged_ego = registry.merge_ego_configs(["global", "teams/backend"])
         assert merged_ego.role == "Backend Engineer"  # Team overrides global
         assert merged_ego.tone.voice == "technical, direct, security-conscious"  # Team override
-        
+
         # But should retain global defaults where team doesn't override
         assert len(merged_ego.ask_when_unsure) > 0  # From global config
-    
+
     def test_cli_doctor_comprehensive_report(
         self,
         complete_registry: Path,
-        runner: CliRunner
+        runner: CliRunner,
     ) -> None:
         """Test doctor command provides comprehensive configuration report."""
         result = runner.invoke(app, [
             "doctor",
             "--registry", str(complete_registry),
-            "--scope", "global", 
-            "--scope", "teams/backend"
+            "--scope", "global",
+            "--scope", "teams/backend",
         ])
-        
+
         assert result.exit_code == 0
-        
+
         # Check report structure
         assert "EgoKit Policy Doctor" in result.stdout
         assert "Policy Version" in result.stdout
         assert "1.2.0" in result.stdout
         assert "Active Scopes" in result.stdout
         assert "global → teams/backend" in result.stdout
-        
+
         # Check rule counts
         assert "Total Rules" in result.stdout
         assert "Critical Rules" in result.stdout
         assert "Warning Rules" in result.stdout
-        
+
         # Check ego configuration
         assert "Ego Role" in result.stdout
         assert "Backend Engineer" in result.stdout  # Should show team override
-        
+
         # Check active rules listing
         assert "Active Rules:" in result.stdout
         assert "SEC-001" in result.stdout
         assert "BACK-001" in result.stdout
-    
+
     def test_end_to_end_agents_md_integration(
         self,
         complete_registry: Path,
         sample_project: Path,
-        runner: CliRunner
+        runner: CliRunner,
     ) -> None:
         """Test end-to-end AGENTS.md-first integration workflow."""
         # Step 1: Apply comprehensive artifacts

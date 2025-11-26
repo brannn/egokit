@@ -929,7 +929,7 @@ class TestSetupCommandsFromMetadata:
                     "test": "uv run pytest tests/",
                     "lint": "uv run ruff check src/",
                     "build": "uv build",
-                }
+                },
             },
         )
         ego_config = EgoConfig(
