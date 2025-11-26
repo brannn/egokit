@@ -283,3 +283,11 @@ class TestPolicyRegistry:
         assert sec_rule.auto_fix is False
         assert "security" in sec_rule.tags
         assert "credentials" in sec_rule.tags
+
+    def test_merge_ego_configs_no_valid_configs(self, temp_registry: Path) -> None:
+        """Test merge_ego_configs raises ScopeError when no valid configs found."""
+        registry = PolicyRegistry(temp_registry)
+
+        # Try to merge with only nonexistent scopes
+        with pytest.raises(ScopeError, match="No valid ego configurations found"):
+            registry.merge_ego_configs(["nonexistent", "also/missing"])
