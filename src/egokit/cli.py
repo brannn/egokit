@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import sys
 import time
 from datetime import UTC, datetime
@@ -100,13 +99,52 @@ def init(
         (registry_path / "ego").mkdir(parents=True, exist_ok=True)
         (registry_path / "schemas").mkdir(exist_ok=True)
 
-        # Get schema files from our package
-        pkg_root = Path(__file__).parent.parent.parent
-        package_schemas = pkg_root / ".egokit" / "policy-registry" / "schemas"
-        if package_schemas.exists():
-            shutil.copytree(
-                package_schemas, registry_path / "schemas", dirs_exist_ok=True,
-            )
+        # Create JSON schemas for validation
+        charter_schema = """\
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EgoKit Policy Charter",
+  "type": "object",
+  "required": ["version", "scopes"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semantic version of policy charter"
+    },
+    "scopes": {
+      "type": "object",
+      "description": "Hierarchical policy scopes"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}
+"""
+        ego_schema = """\
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EgoKit Ego Configuration",
+  "type": "object",
+  "required": ["version", "ego"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semantic version of ego configuration"
+    },
+    "ego": {
+      "type": "object",
+      "description": "AI agent behavior configuration"
+    }
+  }
+}
+"""
+        (registry_path / "schemas" / "charter.schema.json").write_text(
+            charter_schema, encoding="utf-8",
+        )
+        (registry_path / "schemas" / "ego.schema.json").write_text(
+            ego_schema, encoding="utf-8",
+        )
 
         # Create starter charter.yaml
         charter_content = f"""\

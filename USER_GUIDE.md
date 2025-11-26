@@ -15,9 +15,13 @@ This guide provides comprehensive documentation for configuring and using EgoKit
 
 ## Installation and Setup
 
-EgoKit requires Python 3.13 or later. Install using pip:
+EgoKit requires Python 3.13 or later. Install using UV (recommended) or pip:
 
 ```bash
+# Using UV (recommended)
+uv add egokit
+
+# Or using pip
 pip install egokit
 ```
 
@@ -27,12 +31,12 @@ Verify the installation:
 ego --version
 ```
 
-For development work on EgoKit itself, clone the repository and install in editable mode:
+For development work on EgoKit itself, clone the repository and install with UV:
 
 ```bash
 git clone https://github.com/brannn/egokit.git
 cd egokit
-pip install -e ".[dev]"
+uv sync --dev
 ```
 
 ## Creating a Policy Registry

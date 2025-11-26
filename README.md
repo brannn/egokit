@@ -24,6 +24,10 @@ The compilation model means EgoKit has no runtime component. It reads your polic
 EgoKit requires Python 3.13 or later.
 
 ```bash
+# Using UV (recommended)
+uv add egokit
+
+# Or using pip
 pip install egokit
 ```
 
@@ -32,7 +36,7 @@ For development installation:
 ```bash
 git clone https://github.com/brannn/egokit.git
 cd egokit
-pip install -e ".[dev]"
+uv sync --dev
 ```
 
 ## Quick Start
