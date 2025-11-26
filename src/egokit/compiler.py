@@ -144,6 +144,13 @@ class ArtifactCompiler:
                 "",
             ])
 
+        if ego.defaults:
+            sections.append("**Development Approach:**")
+            for key, value in ego.defaults.items():
+                readable_key = key.replace("_", " ").title()
+                sections.append(f"- {readable_key}: {value}")
+            sections.append("")
+
         # Setup Commands (human-managed)
         sections.extend(self._compile_agents_setup_commands())
 
@@ -559,39 +566,65 @@ Include a count summary at the end.
         """Generate /ego-stats command as pure AI prompt."""
         return """---
 description: Analyze policy compliance patterns from git history
-argument-hint: [--days N]
+argument-hint: [--days N] [--branch main]
 ---
 
 # Policy Compliance Statistics
 
 Analyze the git history to identify policy-related patterns and trends.
 
+## Context Check (Important)
+
+First, determine the context:
+1. Check current branch with `git branch --show-current`
+2. If on a feature/refactor branch, note that high commit rates and frequent
+   fixes are EXPECTED and should not be flagged as quality concerns
+3. For accurate violation analysis, compare against main/master branch or
+   use `--branch main` to analyze only merged commits
+
 ## Instructions
 
 1. Run `git log --oneline -100` (or filter by --days if specified)
-2. Look for patterns:
-   - Commits mentioning "fix", "policy", "compliance", or rule IDs
-   - Repeated fixes to the same files/areas
-   - Common violation types
-3. Analyze recent changes for potential policy gaps
-4. Summarize findings with actionable insights
+2. Distinguish between:
+   - **Intentional iteration**: Same author refining work on a feature branch
+   - **Actual violations**: Commits explicitly fixing policy breaches (look for
+     rule IDs like SEC-001, QUAL-001, etc. in messages)
+   - **Refactoring work**: Commits with "refactor:", "chore:" are planned
+     improvements, not quality problems
+3. Look for genuine policy signals:
+   - Commits that explicitly mention rule IDs or "policy"
+   - Patterns where different authors fix the same type of issue
+   - Post-merge fixes that correct violations missed in review
+4. Summarize findings with appropriate context
 
 ## Output Format
 
 ```
+## Analysis Context
+- Branch: [current branch]
+- Analysis type: [feature branch iteration | main branch history]
+
 ## Compliance Trends (last N commits)
 
-### Frequently Fixed Areas
-- path/to/file.py - 5 policy-related commits
-- ...
+### Policy Adherence
+- [RULE-ID]: Evidence of compliance or violation
 
-### Common Patterns
-- [PATTERN]: Description and frequency
+### Frequently Changed Areas
+- path/to/file.py - N commits ([iteration on feature | potential hotspot])
+
+### Patterns Observed
+- [PATTERN]: Description (noting if this is expected refactoring)
 
 ### Recommendations
-- Consider adding rule for X
-- Area Y may need additional review
+- [Only suggest rules for genuine gaps, not iteration noise]
 ```
+
+## Important
+
+Do NOT interpret high fix/chore commit rates as quality problems when:
+- Analyzing a feature or refactor branch (iteration is normal)
+- Commits are from the same author refining their own work
+- The branch name suggests intentional restructuring
 """
 
     def _generate_ego_suggest_command(self) -> str:

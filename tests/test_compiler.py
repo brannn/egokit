@@ -853,3 +853,128 @@ Content here
 """
         result = find_egokit_section(content)
         assert result is None
+
+
+class TestEgoDefaultsRendering:
+    """Test that ego.defaults dict is properly rendered in AGENTS.md."""
+
+    def test_defaults_rendered_in_project_overview(self) -> None:
+        """Test that ego.defaults are rendered as Development Approach section."""
+        charter = PolicyCharter(
+            version="1.0.0",
+            scopes={"global": {}},
+            metadata={},
+        )
+        ego_config = EgoConfig(
+            role="Python Developer",
+            tone=ToneConfig(voice="direct", verbosity="concise"),
+            defaults={
+                "error_handling": "Use explicit exceptions",
+                "code_style": "Follow PEP-8",
+                "testing_approach": "TDD with pytest",
+            },
+        )
+        context = CompilationContext(
+            target_repo=Path("/test"),
+            policy_charter=charter,
+            ego_config=ego_config,
+            active_scope="global",
+        )
+
+        compiler = ArtifactCompiler(context)
+        agents_md = compiler.inject_egokit_section(None)
+
+        # Check defaults are rendered
+        assert "**Development Approach:**" in agents_md
+        assert "- Error Handling: Use explicit exceptions" in agents_md
+        assert "- Code Style: Follow PEP-8" in agents_md
+        assert "- Testing Approach: TDD with pytest" in agents_md
+
+    def test_no_defaults_section_when_empty(self) -> None:
+        """Test that Development Approach section is omitted when no defaults."""
+        charter = PolicyCharter(
+            version="1.0.0",
+            scopes={"global": {}},
+            metadata={},
+        )
+        ego_config = EgoConfig(
+            role="Developer",
+            tone=ToneConfig(voice="direct", verbosity="concise"),
+            # No defaults specified
+        )
+        context = CompilationContext(
+            target_repo=Path("/test"),
+            policy_charter=charter,
+            ego_config=ego_config,
+            active_scope="global",
+        )
+
+        compiler = ArtifactCompiler(context)
+        agents_md = compiler.inject_egokit_section(None)
+
+        assert "**Development Approach:**" not in agents_md
+
+
+class TestSetupCommandsFromMetadata:
+    """Test that charter metadata.setup is rendered in AGENTS.md."""
+
+    def test_custom_setup_commands_from_metadata(self) -> None:
+        """Test that setup commands from metadata are rendered."""
+        charter = PolicyCharter(
+            version="1.0.0",
+            scopes={"global": {}},
+            metadata={
+                "setup": {
+                    "install": "uv sync --dev",
+                    "test": "uv run pytest tests/",
+                    "lint": "uv run ruff check src/",
+                    "build": "uv build",
+                }
+            },
+        )
+        ego_config = EgoConfig(
+            role="Developer",
+            tone=ToneConfig(voice="direct", verbosity="concise"),
+        )
+        context = CompilationContext(
+            target_repo=Path("/test"),
+            policy_charter=charter,
+            ego_config=ego_config,
+            active_scope="global",
+        )
+
+        compiler = ArtifactCompiler(context)
+        agents_md = compiler.inject_egokit_section(None)
+
+        # Check custom setup commands are rendered
+        assert "## Setup Commands" in agents_md
+        assert "- **Install:** `uv sync --dev`" in agents_md
+        assert "- **Test:** `uv run pytest tests/`" in agents_md
+        assert "- **Lint:** `uv run ruff check src/`" in agents_md
+        assert "- **Build:** `uv build`" in agents_md
+
+    def test_default_setup_commands_when_no_metadata(self) -> None:
+        """Test that default setup commands are used when no metadata."""
+        charter = PolicyCharter(
+            version="1.0.0",
+            scopes={"global": {}},
+            metadata={},  # No setup in metadata
+        )
+        ego_config = EgoConfig(
+            role="Developer",
+            tone=ToneConfig(voice="direct", verbosity="concise"),
+        )
+        context = CompilationContext(
+            target_repo=Path("/test"),
+            policy_charter=charter,
+            ego_config=ego_config,
+            active_scope="global",
+        )
+
+        compiler = ArtifactCompiler(context)
+        agents_md = compiler.inject_egokit_section(None)
+
+        # Check default fallback messages
+        assert "## Setup Commands" in agents_md
+        assert "See project README" in agents_md
+        assert "See project test configuration" in agents_md

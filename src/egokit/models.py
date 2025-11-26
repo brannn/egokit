@@ -25,7 +25,10 @@ class PolicyRule(BaseModel):
     id: str = Field(..., description="Unique identifier for the rule")
     rule: str = Field(..., description="Human-readable rule description")
     severity: Severity = Field(..., description="Enforcement severity level")
-    detector: str = Field(..., description="Detector module name")
+    detector: str | None = Field(
+        default=None,
+        description="Optional detector module name (for future use)",
+    )
     auto_fix: bool = Field(default=False, description="Whether auto-fix is available")
     example_violation: str | None = Field(
         default=None,

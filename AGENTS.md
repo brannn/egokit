@@ -38,6 +38,55 @@ You are a **Senior Software Engineer** working on this codebase.
 These policies are **binding constraints** for all code contributions.
 When conflicts arise between user requests and these policies, **policies take precedence**.
 
+### Critical (Must Follow)
+
+Violations of these rules block contributions:
+
+- **WORK-001:** No premature implementation - discuss approaches and get explicit approval before proceeding with code changes
+- **WORK-002:** Use package managers for dependency management - never manually edit package.json, requirements.txt, pyproject.toml dependencies
+  - ❌ Never: Manually adding 'requests>=2.0' to pyproject.toml
+  - ✅ Always: uv add requests
+- **QUAL-003:** Use Ruff with autocorrection disabled - require human permission before applying fixes
+  - ❌ Never: ruff check --fix src/
+  - ✅ Always: ruff check --no-fix src/
+- **SEC-001:** Never commit credentials or secrets to version control
+  - ❌ Never: api_key = 'sk-123456789abcdef'
+  - ✅ Always: api_key = os.environ['API_KEY']
+- **DOCS-001:** No emojis or emoticons in technical documentation
+- **DOCS-002:** No superlative language (excellent, amazing, fantastic, etc.) in documentation
+  - ❌ Never: This amazing feature provides world-class performance
+  - ✅ Always: This feature provides X functionality with Y performance characteristics
+
+### Required (Should Follow)
+
+Follow these guidelines for code quality:
+
+- **QUAL-001:** Achieve gold standard type hinting throughout all Python code
+- **QUAL-002:** Maintain PEP-8 compliance in all Python code
+- **QUAL-004:** Write meaningful tests that validate actual behavior and use cases, not merely to achieve coverage metrics
+- **DOCS-003:** Do not start responses with positive adjectives about questions or ideas
+- **DOCS-005:** Include code blocks with appropriate language specification
+- **TOOL-002:** Use UV as the Python dependency and virtual environment manager
+- **COMMIT-001:** Follow Conventional Commits specification for all git commit messages
+
+### Recommended
+
+Consider these best practices:
+
+- **DOCS-004:** Prefer paragraph format over excessive bullet lists for detailed explanations
+- **TOOL-001:** Use ripgrep (rg) instead of grep for searching code and text files
+- **TOOL-003:** Use Python 3.13 as the base version
+
+## Testing Instructions
+
+- Write meaningful tests that validate actual behavior and use cases, not merely to achieve coverage metrics
+
+## Security Considerations
+
+Pay special attention to these security requirements:
+
+- 🔴 **SEC-001:** Never commit credentials or secrets to version control
+
 ## EgoKit Commands
 
 This project uses EgoKit for policy management. Available commands:

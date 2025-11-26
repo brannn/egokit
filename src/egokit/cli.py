@@ -155,8 +155,6 @@ scopes:
       - id: SEC-001
         rule: "Never commit credentials or secrets"
         severity: critical
-        detector: secret.regex.v1
-        auto_fix: false
         example_violation: "api_key = 'sk-123456789abcdef'"
         example_fix: "api_key = os.environ['API_KEY']"
         tags: ["security", "credentials"]
@@ -164,24 +162,19 @@ scopes:
       - id: QUAL-001
         rule: "Use type hints for all function parameters and return values"
         severity: warning
-        detector: python.ast.typehints.v1
-        auto_fix: true
         example_violation: "def process_data(data):"
-        example_fix: "def process_data(data: Dict[str, Any]) -> List[str]:"
+        example_fix: "def process_data(data: dict[str, Any]) -> list[str]:"
         tags: ["python", "typing"]
-    docs:
+    documentation:
       - id: DOCS-001
         rule: "Avoid superlatives and marketing language"
         severity: critical
-        detector: docs.style.superlatives.v1
-        auto_fix: false
         example_violation: "This amazing feature is world-class"
         example_fix: "This feature provides X functionality"
         tags: ["documentation", "style"]
 metadata:
   description: "{org_name} policy charter"
   maintainer: "{org_name} Engineering Team"
-  last_updated: "2025-08-31"
 """
 
         (registry_path / "charter.yaml").write_text(charter_content, encoding="utf-8")
