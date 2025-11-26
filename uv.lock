@@ -147,7 +147,7 @@ wheels = [
 
 [[package]]
 name = "egokit"
-version = "0.3.14"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },
