@@ -1,4 +1,4 @@
-.PHONY: help lint audit test test-fast test-cov clean install install-dev sync build publish release
+.PHONY: help lint audit test test-fast test-cov clean install install-dev sync build publish release tag tag-push
 
 help:  ## Show this help message
 	@echo "Available commands:"
@@ -65,8 +65,18 @@ publish-test:  ## Publish to TestPyPI (requires UV_PUBLISH_TOKEN env var)
 	fi
 	uv publish --publish-url https://test.pypi.org/legacy/
 
-release: test build publish  ## Run tests, build, and publish to PyPI
+release: test build publish tag  ## Run tests, build, publish to PyPI, and tag
 	@echo "Released version $$(uv version --short)"
+
+tag:  ## Create and push git tag for current version
+	@VERSION=$$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)"/\1/'); \
+	echo "Creating tag v$$VERSION..."; \
+	git tag -a "v$$VERSION" -m "Release v$$VERSION"; \
+	echo "Tag v$$VERSION created. Push with: git push origin v$$VERSION"
+
+tag-push:  ## Push the latest version tag to origin
+	@VERSION=$$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)"/\1/'); \
+	git push origin "v$$VERSION"
 
 version:  ## Show current version
 	@uv version
