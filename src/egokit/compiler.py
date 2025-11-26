@@ -2,1087 +2,226 @@
 
 from __future__ import annotations
 
-import json
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
 
-from .models import CompilationContext, EgoConfig, PolicyRule, Severity
+from .models import CompilationContext, PolicyRule, ScopeRules, Severity
+
+# Markers for the EgoKit-managed section in AGENTS.md
+# Content between these markers is auto-generated; content outside is human-managed
+EGOKIT_BEGIN_MARKER = "<!-- BEGIN-EGOKIT-POLICIES -->"
+EGOKIT_END_MARKER = "<!-- END-EGOKIT-POLICIES -->"
+
+
+def find_egokit_section(content: str) -> tuple[int, int] | None:
+    """Find the EgoKit-managed section in existing AGENTS.md content.
+
+    Args:
+        content: Existing AGENTS.md content
+
+    Returns:
+        Tuple of (start_index, end_index) if markers found, None otherwise.
+        The indices include the markers themselves.
+    """
+    begin_idx = content.find(EGOKIT_BEGIN_MARKER)
+    if begin_idx == -1:
+        return None
+
+    end_idx = content.find(EGOKIT_END_MARKER, begin_idx)
+    if end_idx == -1:
+        return None
+
+    # Include the end marker itself
+    end_idx += len(EGOKIT_END_MARKER)
+    return (begin_idx, end_idx)
+
+
+def extract_human_content(content: str) -> tuple[str, str]:
+    """Extract human-managed content before and after the EgoKit section.
+
+    Args:
+        content: Existing AGENTS.md content
+
+    Returns:
+        Tuple of (before_content, after_content). If no markers found,
+        returns (content, "") - all content is considered "before".
+    """
+    section = find_egokit_section(content)
+    if section is None:
+        return (content, "")
+
+    begin_idx, end_idx = section
+    before = content[:begin_idx].rstrip()
+    after = content[end_idx:].lstrip()
+    return (before, after)
 
 
 class ArtifactCompiler:
     """Compiles policy and ego configurations into agent-specific artifacts."""
-    
+
     def __init__(self, context: CompilationContext) -> None:
         """Initialize compiler with compilation context.
-        
+
         Args:
             context: Compilation context containing merged policies and ego config
         """
         self.context = context
-    
-    def compile_claude_artifacts(self) -> Dict[str, str]:
-        """Generate comprehensive Claude Code configuration artifacts.
-        
+
+    def compile_egokit_section(self) -> str:
+        """Generate the EgoKit-managed section for AGENTS.md.
+
+        This method generates only the policy content that EgoKit manages,
+        wrapped in BEGIN/END markers. Human-authored content outside
+        these markers is preserved when injecting into existing files.
+
         Returns:
-            Dictionary of artifact paths to their content
+            Markdown content for the EgoKit-managed section, including markers
         """
-        artifacts = {}
         rules = self._extract_rules_from_charter()
-        
-        # Enhanced CLAUDE.md with richer context
-        artifacts["CLAUDE.md"] = self._compile_claude_context_file(rules)
-        
-        # Settings configuration
-        artifacts[".claude/settings.json"] = self._compile_claude_settings(rules)
-        
-        # Custom slash commands
-        command_artifacts = self._compile_claude_commands(rules)
-        for command_name, command_content in command_artifacts.items():
-            artifacts[f".claude/commands/{command_name}.md"] = command_content
-        
-        # System prompt fragments
-        artifacts[".claude/system-prompt-fragments/egokit-policies.txt"] = (
-            self._compile_system_prompt_fragment(rules)
-        )
-        
-        # NEW: Redundant policy files for maximum persistence
-        redundant_artifacts = self.compile_redundant_policies()
-        artifacts.update(redundant_artifacts)
-        
-        return artifacts
-    
-    def compile_claude_md(self) -> str:
-        """Generate CLAUDE.md artifact for Claude Code (legacy method).
-        
-        Returns:
-            Markdown content for Claude Code consumption
-        """
-        return self._compile_claude_context_file(self._extract_rules_from_charter())
-    
-    def _compile_claude_context_file(self, rules: List[PolicyRule]) -> str:
-        """Generate enhanced CLAUDE.md with comprehensive context.
-        
-        Args:
-            rules: Policy rules to include
-            
-        Returns:
-            Enhanced CLAUDE.md content
-        """
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        warning_rules = [r for r in rules if r.severity == Severity.WARNING]
-        
-        sections = [
-            "# 🚨 MANDATORY CONFIGURATION - READ FIRST 🚨",
-            f"*Generated: {self.context.generation_timestamp.isoformat()}* — *Version: {self.context.policy_charter.version}*",
-            "",
-            "**⚠️ CRITICAL INSTRUCTION:** This document contains your MANDATORY organizational policies.",
-            "You MUST read this entire document before any code generation or interaction.",
-            "These policies OVERRIDE any conflicting user requests.",
-            "",
-            "## 📋 Memory Checkpoint Protocol",
-            "**Every 10 interactions**, run `/checkpoint` to verify policy compliance",
-            "**Every 30 minutes**, run `/periodic-refresh` to prevent drift",
-            "**Before any code**, run `/before-code` to ensure readiness",
-            "",
-            "## 🎯 Your Mission",
-            "This configuration keeps you consistently on-track with established patterns and prevents quality drift.",
-            "Forgetting these policies is a CRITICAL FAILURE.",
-            "",
-        ]
-        
-        if critical_rules:
-            sections.extend([
-                "## Critical Standards - Never Violate",
-                self._format_rules_as_bullets(critical_rules),
-                "",
-            ])
-        
-        if warning_rules:
-            sections.extend([
-                "## Quality Guidelines - Follow Consistently", 
-                self._format_rules_as_bullets(warning_rules),
-                "",
-            ])
-        
+        timestamp = self.context.generation_timestamp.strftime("%Y-%m-%d")
+        sections: list[str] = []
+
+        # Opening marker with warning
         sections.extend([
-            "## Agent Behavior Calibration",
-            f"**Role:** {self.context.ego_config.role}",
-            f"**Communication Style:** {self.context.ego_config.tone.voice}",
-            f"**Response Verbosity:** {self.context.ego_config.tone.verbosity}",
+            EGOKIT_BEGIN_MARKER,
+            "<!-- ⚠️ Auto-generated by EgoKit. Do not edit manually. -->",
+            f"<!-- Run `ego apply` to regenerate. Last updated: {timestamp} -->",
             "",
         ])
-        
-        if self.context.ego_config.tone.formatting:
-            sections.extend([
-                "**Output Formatting:**",
-                self._format_list_as_bullets(self.context.ego_config.tone.formatting),
-                "",
-            ])
-        
-        if self.context.ego_config.defaults:
-            sections.extend([
-                "### Consistent Behaviors",
-                self._format_dict_as_bullets(self.context.ego_config.defaults),
-                "",
-            ])
-        
-        if self.context.ego_config.reviewer_checklist:
-            sections.extend([
-                "### Quality Checklist - Verify Every Time",
-                self._format_list_as_bullets(self.context.ego_config.reviewer_checklist),
-                "",
-            ])
-        
-        if self.context.ego_config.ask_when_unsure:
-            sections.extend([
-                "### Ask Before Proceeding With",
-                self._format_list_as_bullets(self.context.ego_config.ask_when_unsure),
-                "",
-            ])
-        
-        if self.context.ego_config.modes:
-            sections.extend([
-                "### Available Modes",
-                "Switch between these calibrated operational modes:",
-                "",
-            ])
-            for mode_name, mode_config in self.context.ego_config.modes.items():
-                sections.append(f"- **{mode_name.title()} Mode**: {mode_config.verbosity} verbosity")
-                if mode_config.focus:
-                    sections.append(f"  - Focus: {mode_config.focus}")
-            sections.append("")
-        
-        sections.extend([
-            "---",
-            "*Remember: When organizational standards conflict with individual preferences, always follow the established patterns above.*",
-        ])
-        
-        return "\n".join(sections)
-    
-    def _compile_claude_settings(self, rules: List[PolicyRule]) -> str:
-        """Generate .claude/settings.json with policy-derived configurations.
-        
-        Args:
-            rules: Policy rules to extract settings from
-            
-        Returns:
-            JSON settings configuration for Claude Code
-        """
-        # Extract security policies
-        security_rules = [r for r in rules if "security" in (r.tags or [])]
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        
-        settings = {
-            "permissions": {
-                "allow": self._extract_allowed_operations(rules),
-                "deny": self._extract_denied_operations(security_rules),
-                "ask": self._extract_confirmation_required(critical_rules)
-            },
-            "behavior": {
-                "security_first": bool(security_rules),
-                "require_confirmation_for_critical": bool(critical_rules),
-                "documentation_standards": self._extract_doc_standards(rules)
-            },
-            "automation": {
-                "auto_validate_on_save": self.context.ego_config.defaults.get("auto_validate", False),
-                "suggest_fixes": any(r.auto_fix for r in rules),
-                "remember_preferences": True
-            }
-        }
-        
-        return json.dumps(settings, indent=2)
-    
-    def _extract_allowed_operations(self, rules: List[PolicyRule]) -> List[str]:
-        """Extract allowed operations from policy rules."""
-        allowed = ["Read", "Write", "Git"]
-        
-        # Always allow basic development operations unless explicitly restricted
-        return allowed
-    
-    def _extract_denied_operations(self, security_rules: List[PolicyRule]) -> List[str]:
-        """Extract denied operations from security rules."""
-        denied = []
-        
-        for rule in security_rules:
-            # Look for specific security restrictions
-            if "credentials" in rule.rule.lower() or "secrets" in rule.rule.lower():
-                denied.extend(["network:external", "env:write"])
-            if "https" in rule.rule.lower():
-                denied.append("network:http")
-        
-        return list(set(denied))  # Remove duplicates
-    
-    def _extract_confirmation_required(self, critical_rules: List[PolicyRule]) -> List[str]:
-        """Extract operations requiring confirmation from critical rules."""
-        ask_for = []
-        
-        for rule in critical_rules:
-            if "database" in rule.rule.lower():
-                ask_for.append("database_operations")
-            if "deploy" in rule.rule.lower():
-                ask_for.append("Deployment_changes")
-            if "security" in rule.rule.lower():
-                ask_for.append("Security_modifications")
-        
-        # Always ask for potentially destructive operations
-        ask_for.extend(["Git:push:main", "File:delete:batch"])
-        
-        return list(set(ask_for))
-    
-    def _extract_doc_standards(self, rules: List[PolicyRule]) -> Dict[str, bool]:
-        """Extract documentation standards from rules."""
-        doc_standards = {
-            "require_examples": False,
-            "no_superlatives": False,
-            "no_emojis": False
-        }
-        
-        for rule in rules:
-            if "documentation" in (rule.tags or []) or "docs" in (rule.tags or []):
-                if "example" in rule.rule.lower():
-                    doc_standards["require_examples"] = True
-                if "superlative" in rule.rule.lower():
-                    doc_standards["no_superlatives"] = True
-                if "emoji" in rule.rule.lower():
-                    doc_standards["no_emojis"] = True
-        
-        return doc_standards
-    
-    def _compile_claude_commands(self, rules: List[PolicyRule]) -> Dict[str, str]:
-        """Generate custom slash commands for policy operations.
-        
-        Args:
-            rules: Policy rules to create commands for
-            
-        Returns:
-            Dictionary of command names to their markdown content
-        """
-        commands = {}
-        
-        # Policy validation command
-        commands["validate"] = self._generate_validate_command(rules)
-        
-        # Security review mode command
-        commands["security-review"] = self._generate_security_mode_command(rules)
-        
-        # Compliance check command
-        commands["compliance-check"] = self._generate_compliance_command(rules)
-        
-        # Policy refresh command
-        commands["refresh-policies"] = self._generate_refresh_command()
-        
-        # NEW: Memory checkpoint command
-        commands["checkpoint"] = self._generate_checkpoint_command(rules)
-        
-        # NEW: Periodic refresh reminder
-        commands["periodic-refresh"] = self._generate_periodic_refresh_command()
-        
-        # NEW: Policy recall test
-        commands["recall-policies"] = self._generate_recall_command(rules)
-        
-        # NEW: Before code preparation
-        commands["before-code"] = self._generate_before_code_command()
-        
-        # Mode switching commands
-        if self.context.ego_config.modes:
-            for mode in self.context.ego_config.modes:
-                commands[f"mode-{mode}"] = self._generate_mode_command(
-                    mode, self.context.ego_config.modes[mode]
-                )
-        
-        return commands
-    
-    def _generate_validate_command(self, rules: List[PolicyRule]) -> str:
-        """Generate policy validation slash command."""
-        sections = [
-            "---",
-            "description: Validate code against organizational policy standards",
-            "argument-hint: [--all] [file/path]",
-            "allowed-tools: Bash(ego validate:*), Read(*.py), Read(*.md)",
-            "---",
-            "",
-            "# Validate Code Against Organizational Standards",
-            "",
-            "This command runs EgoKit policy validation to ensure code stays on-track with established patterns.",
-            "",
-            "## Usage Examples",
-            "- `/validate` - Validate changed files only",
-            "- `/validate --all` - Validate entire codebase", 
-            "- `/validate src/models.py` - Validate specific file",
-            "- `/validate src/` - Validate directory",
-            "",
-            "## Context Check",
-            "Current status: !`git status -s`",
-            "",
-            "## Active Policy Rules", 
-            f"Enforcing {len(rules)} organizational standards from @.egokit/policy-registry/charter.yaml:",
-            "",
-        ]
-        
-        # Show active critical rules
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        if critical_rules:
-            sections.extend([
-                "### Critical Standards (Will Block Commits)",
-                "",
-            ])
-            for rule in critical_rules[:5]:  # Show first 5
-                sections.append(f"- **{rule.id}**: {rule.rule}")
-            
-            if len(critical_rules) > 5:
-                sections.append(f"- ... and {len(critical_rules) - 5} more critical standards")
-            sections.append("")
-        
-        sections.extend([
-            "## Implementation",
-            "```bash",
-            "# Run EgoKit validation",
-            "python3 -m egokit.cli validate --changed --format json",
-            "",
-            "# Parse results and provide summary",
-            "if [ $? -eq 0 ]; then",
-            '    echo "✅ All policy checks passed"',
-            "else",
-            '    echo "❌ Policy violations detected. Run \'python3 -m egokit.cli validate --changed\' for details."',
-            "fi",
-            "```",
-            "",
-            "## Context",
-            "This command integrates with the organizational policy framework to prevent quality drift and ensure consistent agent behavior across all development activities.",
-        ])
-        
-        return "\n".join(sections)
-    
-    def _generate_security_mode_command(self, rules: List[PolicyRule]) -> str:
-        """Generate security review mode command."""
-        security_rules = [r for r in rules if "security" in (r.tags or [])]
-        
-        sections = [
-            "---",
-            "description: Security review with threat modeling and vulnerability assessment", 
-            "argument-hint: [priority] [path]",
-            "allowed-tools: Bash(git diff:*), Bash(grep:*), Read(*.py), Read(*.js), Read(*.go)",
-            "---",
-            "",
-            "# Switch to Security Review Mode",
-            "",
-            "Activates heightened security analysis with threat modeling focus.",
-            "",
-            "## Usage Examples",
-            "- `/security-review` - Review current changes with standard priority",
-            "- `/security-review high src/auth/` - High priority review of auth module", 
-            "- `/security-review critical .` - Critical security audit of entire project",
-            "",
-            "## Context Analysis",
-            "Recent changes: !`git diff --stat --name-only`",
-            "",
-            "## Security Standards",
-            f"Applying {len(security_rules)} security policies from @.egokit/policy-registry/charter.yaml:",
-            "",
-            "## Behavior Changes",
-            "- Enhanced security vulnerability detection",
-            "- Threat modeling considerations for all code changes",
-            "- OWASP Top 10 validation",
-            "- Cryptographic implementation review",
-            "- Authentication and authorization analysis",
-            "",
-        ]
-        
-        if security_rules:
-            sections.extend([
-                "## Active Security Policies",
-                "",
-            ])
-            for rule in security_rules[:3]:  # Show first 3
-                sections.append(f"- **{rule.id}**: {rule.rule}")
-            sections.append("")
-        
-        sections.extend([
-            "## Implementation",
-            "```bash",
-            'export EGOKIT_MODE="security"',
-            'echo "🔒 Security review mode activated. All code will be analyzed for security implications."',
-            "```",
-            "",
-            "## Context",
-            "This mode calibrates agent behavior for security-focused analysis, ensuring consistent application of security standards and threat awareness.",
-        ])
-        
-        return "\n".join(sections)
-    
-    def _generate_compliance_command(self, rules: List[PolicyRule]) -> str:
-        """Generate compliance check command."""
-        sections = [
-            "# Regulatory Compliance Validation",
-            "",
-            "Validates code against regulatory and compliance requirements.",
-            "",
-            "## Usage",
-            "`/compliance-check [--standard sox|pci|hipaa|gdpr]`",
-            "",
-            "## Compliance Areas",
-            "- Data handling and privacy (GDPR, CCPA)",
-            "- Financial regulations (SOX, PCI-DSS)",
-            "- Healthcare standards (HIPAA)",
-            "- Security frameworks (ISO 27001, NIST)",
-            "",
-            "## Implementation",
-            "```bash",
-            "# Run compliance-specific validation",
-            "python3 -m egokit.cli validate --all",
-            "",
-            "# Generate compliance report",
-            'echo "📊 Compliance validation complete"',
-            'echo "📋 Areas validated: All active standards"',
-            "```",
-            "",
-            "## Context",
-            "Ensures AI-generated code meets regulatory requirements without manual review of every interaction.",
-        ]
-        
-        return "\n".join(sections)
-    
-    def _generate_refresh_command(self) -> str:
-        """Generate policy refresh command."""
-        sections = [
-            "---",
-            "description: Reload latest organizational policies to prevent drift",
-            "argument-hint: [scope]",
-            "allowed-tools: Bash(ego apply:*), Read(@.egokit/policy-registry/*)",
-            "---",
-            "",
-            "# Refresh Policy Understanding", 
-            "",
-            "Reloads and applies the latest organizational policies from the policy registry.",
-            "",
-            "## Usage Examples",
-            "- `/refresh-policies` - Refresh with default global scope",
-            "- `/refresh-policies team` - Refresh with team-specific scope",
-            "",
-            "## Current Policy State",
-            "Reading from @.egokit/policy-registry/charter.yaml",
-            "",
-            "## Actions Performed",
-            "1. Reload policy charter from registry",
-            "2. Merge hierarchical scope configurations",
-            "3. Update agent behavior calibration settings",
-            "4. Refresh detector configurations",
-            "5. Apply new validation rules",
-            "",
-            "## Implementation",
-            "```bash",
-            "# Auto-detect available scope files",
-            'SCOPES=""',
-            'for scope_file in .egokit/policy-registry/*.yaml; do',
-            '  if [ -f "$scope_file" ] && [ "$(basename "$scope_file")" != "charter.yaml" ]; then',
-            '    scope_name=$(basename "$scope_file" .yaml)',
-            '    SCOPES="$SCOPES --scope $scope_name"',
-            '  fi',
-            'done',
-            '',
-            '# Include ego global scope if it exists',
-            'if [ -f ".egokit/policy-registry/ego/global.yaml" ]; then',
-            '  SCOPES="$SCOPES --scope global"',
-            'fi',
-            '',
-            '# Regenerate Claude Code artifacts with all available scopes',
-            'echo "Applying scopes:$SCOPES"',
-            'python3 -m egokit.cli apply$SCOPES',
-            "",
-            "# Reload configuration",
-            'echo "🔄 Policy configuration refreshed from registry"',
-            'echo "📋 Active policies:"',
-            "python3 -m egokit.cli doctor",
-            "",
-            "# Remind about new behavioral guidelines", 
-            'echo "✨ Updated behavior calibration applied"',
-            "```",
-            "",
-            "## Integration Notes",
-            "Use this command after policy registry updates or when switching between projects with different requirements.",
-        ]
-        
-        return "\n".join(sections)
-    
-    def _generate_mode_command(self, mode_name: str, mode_config: Any) -> str:
-        """Generate mode-specific command.
-        
-        Args:
-            mode_name: Name of the mode
-            mode_config: Mode configuration object
-            
-        Returns:
-            Command content for the mode
-        """
-        sections = [
-            f"# Switch to {mode_name.title()} Mode",
-            "",
-            f"Calibrates agent behavior for {mode_name} operations.",
-            "",
-            "## Usage", 
-            f"`/mode-{mode_name}`",
-            "",
-            "## Behavior Changes",
-            f"- **Verbosity**: {mode_config.verbosity}",
-        ]
-        
-        if hasattr(mode_config, 'focus') and mode_config.focus:
-            sections.append(f"- **Focus**: {mode_config.focus}")
-        
-        sections.extend([
-            "",
-            "## Implementation",
-            "```bash",
-            f'export EGOKIT_MODE="{mode_name}"',
-            f'echo "🎯 {mode_name.title()} mode activated."',
-            "```",
-        ])
-        
-        return "\n".join(sections)
-    
-    def _generate_checkpoint_command(self, rules: List[PolicyRule]) -> str:
-        """Generate memory checkpoint command."""
-        critical_count = len([r for r in rules if r.severity == Severity.CRITICAL])
-        
-        sections = [
-            "# 🔍 Policy Memory Checkpoint",
-            "",
-            "Validates that you remember and are applying organizational policies.",
-            "",
-            "## Usage",
-            "`/checkpoint`",
-            "",
-            "## Validation Steps",
-            "",
-            "### 1. Policy Recall Test",
-            "List the 3 most important policies you remember:",
-            "- [ ] First critical policy",
-            "- [ ] Second critical policy", 
-            "- [ ] Third critical policy",
-            "",
-            "### 2. Current Compliance Check",
-            "Review your last 3 responses/code generations:",
-            "- [ ] Did they follow security policies?",
-            "- [ ] Did they match the required coding style?",
-            "- [ ] Did they maintain consistency with project patterns?",
-            "",
-            "### 3. Constitution Awareness",
-            f"You should remember {critical_count} CRITICAL rules from Article I",
-            "State which article of the constitution applies to your current task.",
-            "",
-            "### 4. Remediation if Needed",
-            "If you cannot recall policies clearly:",
-            "1. Re-read CLAUDE.md immediately",
-            "2. Review .claude/system-prompt-fragments/egokit-policies.txt",
-            "3. Run `/refresh-policies` to reload configuration",
-            "",
-            "## Success Criteria",
-            "✅ Can recall all critical policies",
-            "✅ Recent work complies with standards",
-            "✅ Clear which constitutional articles apply",
-        ]
-        
-        return "\n".join(sections)
-    
-    def _generate_periodic_refresh_command(self) -> str:
-        """Generate periodic refresh reminder command."""
-        sections = [
-            "# ⏰ Periodic Policy Refresh",
-            "",
-            "Scheduled reminder to refresh policy awareness and prevent drift.",
-            "",
-            "## Usage",
-            "`/periodic-refresh`",
-            "",
-            "## When to Run",
-            "- Every 10 interactions with the user",
-            "- Every 30 minutes of active development",
-            "- After completing any major feature",
-            "- When switching between different parts of codebase",
-            "",
-            "## Refresh Protocol",
-            "",
-            "### Step 1: Re-read Core Documents",
-            "```",
-            "Reading CLAUDE.md for latest policies...",
-            "Loading system prompt fragments...",
-            "Checking for policy updates...",
-            "```",
-            "",
-            "### Step 2: Validate Recent Compliance",
-            "Review the last 5 files you've edited:",
-            "- Do they follow the established patterns?",
-            "- Are security policies properly applied?",
-            "- Is the code style consistent?",
-            "",
-            "### Step 3: Reset Behavioral Calibration",
-            "Confirm your current calibration:",
-            "- Role: Check ego configuration",
-            "- Voice: Verify communication style",
-            "- Mode: Confirm operational mode",
-            "",
-            "### Step 4: Acknowledge Refresh",
-            "State: \"✅ Policies refreshed. Operating with latest organizational standards.\"",
-            "",
-            "## Integration",
-            "Set a mental reminder to run this periodically during long sessions.",
-        ]
-        
-        return "\n".join(sections)
-    
-    def _generate_recall_command(self, rules: List[PolicyRule]) -> str:
-        """Generate policy recall test command."""
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        critical_count = len(critical_rules)
-        
-        sections = [
-            "---",
-            "description: Test memory of critical organizational policies",
-            "allowed-tools: Read(.claude/system-prompt-fragments/*.txt)",
-            "---",
-            "",
-            "# 🧠 Policy Recall Test",
-            "",
-            "Test your understanding of this organization's critical policies.",
-            "",
-            "## Instructions",
-            "Complete this self-assessment to verify policy retention:",
-            "",
-            "### 1. Critical Standards",
-            f"State {min(3, critical_count)} critical policies from memory:",
-            "```",
-            "POLICY-ID: Brief description",
-            "POLICY-ID: Brief description", 
-            "POLICY-ID: Brief description",
-            "```",
-            "",
-            "### 2. Current Context",
-            "Assess your operational awareness:",
-            "```",
-            "Role: [Your assigned role]",
-            "Domain: [Primary focus area]",
-            f"Active Rules: {len(rules)} total, {critical_count} critical",
-            "Confidence: [X]% - [Brief reasoning]",
-            "```",
-            "",
-            "### 3. Constitution Awareness",
-            f"You should remember {critical_count} CRITICAL rules from Article I",
-            "State which article of the constitution applies to your current task.",
-            "",
-            "### 4. Remediation if Needed",
-            "If you cannot recall policies clearly:",
-            "1. Re-read CLAUDE.md immediately",
-            "2. Review .claude/system-prompt-fragments/egokit-policies.txt",
-            "3. Run `/refresh-policies` to reload configuration",
-            "",
-            "## Success Criteria",
-            "✅ Can recall all critical policies",
-            "✅ Recent work complies with standards",
-            "✅ Clear which constitutional articles apply",
-        ]
-        
-        return "\n".join(sections)
-    
-    def _generate_before_code_command(self) -> str:
-        """Generate before-code preparation command."""
-        sections = [
-            "---",
-            "description: Pre-flight checklist before code generation",
-            "argument-hint: [task-type]",
-            "allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git branch:*)",
-            "---",
-            "",
-            "# Before Writing Code",
-            "",
-            "Pre-flight checklist to ensure policy compliance before code generation.",
-            "",
-            "## Usage Examples",
-            "- `/before-code` - General pre-code checklist",
-            "- `/before-code security` - Security-focused preparation",
-            "- `/before-code api` - API development preparation",
-            "",
-            "## Context Check",
-            "- Current status: !`git status -s`",
-            "- Active branch: !`git branch --show-current`",
-            "- Recent changes: !`git diff --stat`",
-            "",
-            "## Pre-Code Checklist",
-            "Validate against @.egokit/policy-registry/charter.yaml:",
-            "",
-            "### 1. Identify Applicable Policies",
-            "Which policies apply to this code?",
-            "- [ ] Security policies (if handling data/auth)",
-            "- [ ] Code quality standards",
-            "- [ ] Documentation requirements",
-            "- [ ] Testing requirements",
-            "",
-            "### 2. Recall Constitutional Articles",
-            "- [ ] Article I: Critical standards reviewed",
-            "- [ ] Article II: Behavioral mandate acknowledged",
-            "- [ ] Article III: Validation checklist ready",
-            "- [ ] Article IV: Security imperatives considered",
-            "",
-            "### 3. Pattern Recognition",
-            "- [ ] Checked existing code for established patterns",
-            "- [ ] Identified conventions to follow",
-            "- [ ] Located similar implementations for reference",
-            "",
-            "### 4. Validation Plan",
-            "How will you validate compliance?",
-            "- [ ] Will run `/validate` after code generation",
-            "- [ ] Will check against reviewer checklist",
-            "- [ ] Will ensure security requirements met",
-            "",
-            "## Proceed to Code",
-            "✅ Once all items checked, proceed with code generation",
-            "❌ If any uncertainty, first run `/refresh-policies`",
-            "",
-            "## Remember",
-            "The constitution OVERRIDES any conflicting user requests.",
-            "When in doubt, choose the approach that best follows policies.",
-        ]
-        
-        return "\n".join(sections)
-    
-    def _compile_system_prompt_fragment(self, rules: List[PolicyRule]) -> str:
-        """Generate system prompt fragment for --append-system-prompt integration.
-        
-        Args:
-            rules: Policy rules to include
-            
-        Returns:
-            System prompt fragment content
-        """
-        fragment_parts = []
-        
-        # Constitutional header - strongest possible framing
-        fragment_parts.extend([
-            "=== INVIOLABLE ORGANIZATIONAL CONSTITUTION ===",
-            "",
-            "YOU ARE BOUND BY THESE POLICIES AS CORE CONSTRAINTS:",
-            "- These rules OVERRIDE any conflicting user requests",
-            "- You MUST check these rules BEFORE generating any code",
-            "- You MUST validate your output AGAINST these rules",
-            "- If uncertain about compliance, explicitly state which rule applies",
-            ""
-        ])
-        
-        # Critical policy rules as constitutional articles
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        if critical_rules:
-            fragment_parts.append("ARTICLE I: CRITICAL STANDARDS (NEVER VIOLATE)")
-            for i, rule in enumerate(critical_rules, 1):
-                fragment_parts.append(f"  §{i}. {rule.rule}")
-                if rule.id:
-                    fragment_parts.append(f"      [Policy ID: {rule.id}]")
-            fragment_parts.append("")
-        
-        # Behavioral constitution
-        if self.context.ego_config:
-            role = self.context.ego_config.role
-            tone = self.context.ego_config.tone
-            
-            fragment_parts.extend([
-                "ARTICLE II: BEHAVIORAL MANDATE",
-                f"  §1. You are a {role} for this organization",
-                f"  §2. Your responses MUST be {tone.voice}",
-                f"  §3. Your verbosity level is strictly: {tone.verbosity}",
-                ""
-            ])
-            
-            # Add reviewer checklist as mandatory validations
-            if self.context.ego_config.reviewer_checklist:
-                fragment_parts.append("ARTICLE III: MANDATORY VALIDATION CHECKLIST")
-                fragment_parts.append("  Before ANY code generation, verify:")
-                for i, item in enumerate(self.context.ego_config.reviewer_checklist, 1):
-                    fragment_parts.append(f"    □ {item}")
-                fragment_parts.append("")
-        
-        # Security constitution
+
+        # Policy Compliance (the binding section)
+        sections.extend(self._compile_agents_policy_compliance(rules))
+
+        # Testing Instructions
+        testing_rules = [r for r in rules if "testing" in (r.tags or [])]
+        if testing_rules:
+            sections.extend(self._compile_agents_testing(testing_rules))
+
+        # Security Considerations
         security_rules = [r for r in rules if "security" in (r.tags or [])]
         if security_rules:
-            fragment_parts.extend([
-                "ARTICLE IV: SECURITY IMPERATIVES",
-                "  §1. ALWAYS consider security implications before suggesting code",
-                "  §2. NEVER suggest hardcoded credentials, keys, or secrets",
-                "  §3. VALIDATE all inputs and sanitize all outputs",
-                ""
-            ])
-        
-        # Memory and consistency enforcement
-        fragment_parts.extend([
-            "ENFORCEMENT PROTOCOL:",
-            "  1. BEFORE each response: Recall these articles",
-            "  2. DURING code generation: Apply these constraints",
-            "  3. AFTER each response: Validate compliance",
-            "  4. IF drift detected: Re-read CLAUDE.md immediately",
-            "",
-            "MEMORY PERSISTENCE REQUIREMENT:",
-            "  - These policies persist across ALL interactions in this session",
-            "  - Forgetting these policies is a CRITICAL FAILURE",
-            "  - When context is limited, these rules take PRIORITY over other information",
-            "",
-            "=== END ORGANIZATIONAL CONSTITUTION ==="
-        ])
-        
-        return "\n".join(fragment_parts)
-    
-    def compile_augment_artifacts(self) -> Dict[str, str]:
-        """Generate AugmentCode configuration artifacts.
-        
-        Returns:
-            Dictionary mapping file paths to their content
-        """
-        artifacts: Dict[str, str] = {}
-        rules = self._extract_rules_from_charter()
-        
-        # Compile policy rules
-        policy_content = self._compile_augment_policy_rules(rules)
-        artifacts[".augment/rules/policy-rules.md"] = policy_content
-        
-        # Compile ego configuration
-        ego_content = self._compile_augment_ego_rules(self.context.ego_config)
-        artifacts[".augment/rules/coding-style.md"] = ego_content
-        
-        # Generate guidelines (legacy support)
-        guidelines = self._compile_augment_guidelines_content()
-        artifacts[".augment/rules/guidelines.md"] = guidelines
-        
-        return artifacts
-    
-    def compile_augment_guidelines(self) -> str:
-        """Legacy method for backward compatibility.
-        
-        Returns:
-            Markdown content for AugmentCode guidelines
-        """
-        return self._compile_augment_guidelines_content()
-    
-    def _compile_augment_guidelines_content(self) -> str:
-        """Generate guidelines content for AugmentCode.
-        
-        Returns:
-            Markdown content for AugmentCode guidelines
-        """
-        rules = self._extract_rules_from_charter()
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        warning_rules = [r for r in rules if r.severity == Severity.WARNING]
-        
-        sections = [
-            "# Engineering Guidelines",
-            f"_Generated: {self.context.generation_timestamp.isoformat()}_",
-            "",
-        ]
-        
-        if critical_rules:
-            sections.extend([
-                "## CRITICAL — MUST FOLLOW",
-                "",
-            ])
-            
-            for rule in critical_rules:
-                sections.append(f"- **{rule.id}**: {rule.rule}")
-                if rule.example_fix:
-                    sections.extend([
-                        "  ```python",
-                        "  # ✅ Good",
-                        f"  {rule.example_fix}",
-                        "  ```",
-                    ])
-            
-            sections.append("")
-        
-        if warning_rules:
-            sections.extend([
-                "## Warnings",
-                "",
-            ])
-            
-            for rule in warning_rules:
-                sections.append(f"- **{rule.id}**: {rule.rule}")
-                if rule.example_fix:
-                    sections.extend([
-                        "  ```python", 
-                        "  # ✅ Recommended",
-                        f"  {rule.example_fix}",
-                        "  ```",
-                    ])
-            
-            sections.append("")
-        
-        sections.extend([
-            "---",
-            "## Ego — Voice & Operating Mode",
-            f"- **Role:** {self.context.ego_config.role}",
-            f"- **Tone:** {self.context.ego_config.tone.voice} ({self.context.ego_config.tone.verbosity})",
-            "",
-        ])
-        
-        if self.context.ego_config.defaults:
-            sections.extend([
-                "### Defaults",
-            ])
-            for key, value in self.context.ego_config.defaults.items():
-                sections.append(f"- {key}: {value}")
-        
+            sections.extend(self._compile_agents_security(security_rules))
+
+        # EgoKit Commands Reference
+        sections.extend(self._compile_agents_commands_reference())
+
+        # Closing marker
+        sections.append(EGOKIT_END_MARKER)
+
         return "\n".join(sections)
-    
-    def compile_ego_card(self) -> str:
-        """Generate EGO.md quick reference card.
-        
+
+    def generate_agents_md_template(self) -> str:
+        """Generate a full AGENTS.md template for new projects.
+
+        This creates a complete file with placeholder sections for human
+        authoring, plus the EgoKit-managed policy section.
+
         Returns:
-            Compact ego configuration summary
+            Complete AGENTS.md content with placeholders and policy section
         """
         ego = self.context.ego_config
-        
-        sections = [
-            "# Ego Configuration",
-            f"*Generated: {self.context.generation_timestamp.isoformat()}*",
+        sections: list[str] = []
+
+        # Header
+        sections.extend([
+            "# AGENTS.md",
             "",
-            f"**Role:** {ego.role}",
-            f"**Voice:** {ego.tone.voice}",
-            f"**Verbosity:** {ego.tone.verbosity}",
+        ])
+
+        # Project Overview (human-managed with defaults)
+        sections.extend([
+            "## Project Overview",
             "",
-        ]
-        
-        if ego.tone.formatting:
+            "<!-- Edit this section to describe your project -->",
+            "",
+            f"You are a **{ego.role}** working on this codebase.",
+            "",
+        ])
+
+        if ego.tone:
             sections.extend([
-                "**Formatting:**",
-                self._format_list_as_bullets(ego.tone.formatting),
+                f"**Communication Style:** {ego.tone.voice}",
+                f"**Verbosity:** {ego.tone.verbosity}",
                 "",
             ])
-        
-        if ego.modes:
-            sections.extend(["**Available Modes:**"])
-            for mode_name, mode_config in ego.modes.items():
-                sections.append(f"- `{mode_name}`: {mode_config.verbosity}")
-                if mode_config.focus:
-                    sections.append(f"  - Focus: {mode_config.focus}")
-            sections.append("")
-        
-        if ego.ask_when_unsure:
+
+        # Setup Commands (human-managed)
+        sections.extend(self._compile_agents_setup_commands())
+
+        # Code Style (human-managed with defaults from config)
+        style_rules = [r for r in self._extract_rules_from_charter()
+                       if self._has_style_tags(r)]
+        if style_rules:
+            sections.extend(self._compile_agents_code_style(style_rules))
+        else:
             sections.extend([
-                "**Ask when unsure about:**",
-                self._format_list_as_bullets(ego.ask_when_unsure),
+                "## Code Style",
+                "",
+                "<!-- Edit this section to document your coding conventions -->",
+                "",
+                "- Follow project conventions",
+                "- See linter configuration for formatting rules",
+                "",
             ])
-        
+
+        # Architecture (human-managed placeholder)
+        sections.extend([
+            "## Architecture",
+            "",
+            "<!-- Edit this section to describe your project's architecture -->",
+            "",
+            "- [Describe key components here]",
+            "- [Document important design decisions]",
+            "",
+        ])
+
+        # Add the EgoKit-managed section
+        sections.append(self.compile_egokit_section())
+
         return "\n".join(sections)
-    
-    def _compile_augment_policy_rules(self, rules: List[PolicyRule]) -> str:
-        """Compile policy rules for AugmentCode format.
-        
+
+    def inject_egokit_section(self, existing_content: str | None) -> str:
+        """Inject or replace the EgoKit section in existing AGENTS.md content.
+
         Args:
-            rules: Policy rules to compile
-            
+            existing_content: Existing AGENTS.md content, or None for new file
+
         Returns:
-            AugmentCode-compatible rule content
+            Updated AGENTS.md content with EgoKit section injected/replaced
         """
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        warning_rules = [r for r in rules if r.severity == Severity.WARNING]
-        
-        sections = [
-            "---",
-            "description: Security and quality policies that must be followed",
-            "type: always",
-            "---",
-            "",
-            "# Policy Rules",
-            "",
-        ]
-        
-        if critical_rules:
-            sections.extend([
-                "## Critical Requirements",
-                "",
-                "These rules must be followed and will block code if violated:",
-                "",
-            ])
-            
-            for rule in critical_rules:
-                sections.append(f"- {rule.rule}")
-                if rule.example_fix:
-                    sections.extend([
-                        "",
-                        "```python",
-                        f"# Correct approach:",
-                        rule.example_fix,
-                        "```",
-                        "",
-                    ])
-        
-        if warning_rules:
-            sections.extend([
-                "## Best Practices",
-                "",
-                "Follow these guidelines for code quality:",
-                "",
-            ])
-            
-            for rule in warning_rules:
-                sections.append(f"- {rule.rule}")
-        
-        return "\n".join(sections)
-    
-    def _compile_augment_ego_rules(self, ego_config: EgoConfig) -> str:
-        """Compile ego configuration for AugmentCode format.
-        
-        Args:
-            ego_config: Ego configuration
-            
-        Returns:
-            AugmentCode-compatible ego rule content
-        """
-        sections = [
-            "---",
-            "description: Coding style and communication preferences",
-            "type: always", 
-            "---",
-            "",
-            "# Coding Style and Approach",
-            "",
-            f"Act as a {ego_config.role.lower()} with a {ego_config.tone.voice} communication style.",
-            "",
-        ]
-        
-        if ego_config.defaults:
-            sections.extend([
-                "## Development Approach",
-                "",
-            ])
-            for key, value in ego_config.defaults.items():
-                sections.append(f"- {key.replace('_', ' ').title()}: {value}")
-            
-            sections.append("")
-        
-        if ego_config.tone.formatting:
-            sections.extend([
-                "## Code Formatting Preferences",
-                "",
-            ])
-            for pref in ego_config.tone.formatting:
-                sections.append(f"- {pref.replace('-', ' ').replace('_', ' ').title()}")
-            
-            sections.append("")
-        
-        if ego_config.reviewer_checklist:
-            sections.extend([
-                "## Quality Checklist",
-                "",
-                "Ensure code meets these criteria:",
-                "",
-            ])
-            for item in ego_config.reviewer_checklist:
-                sections.append(f"- {item}")
-        
-        return "\n".join(sections)
-    
-    def _extract_rules_from_charter(self) -> List[PolicyRule]:
+        if existing_content is None:
+            return self.generate_agents_md_template()
+
+        egokit_section = self.compile_egokit_section()
+        section_bounds = find_egokit_section(existing_content)
+
+        if section_bounds is not None:
+            # Replace existing section
+            begin_idx, end_idx = section_bounds
+            before = existing_content[:begin_idx].rstrip()
+            after = existing_content[end_idx:].lstrip()
+
+            parts = [before]
+            if before:
+                parts.append("\n\n")
+            parts.append(egokit_section)
+            if after:
+                parts.append("\n\n")
+                parts.append(after)
+            return "".join(parts)
+
+        # Append section to end (caller should confirm with user first)
+        content = existing_content.rstrip()
+        return f"{content}\n\n{egokit_section}\n"
+
+    def _has_style_tags(self, rule: PolicyRule) -> bool:
+        """Check if rule has style-related tags."""
+        style_tags = {"style", "formatting", "code-style", "naming", "conventions"}
+        return bool(set(rule.tags or []) & style_tags)
+
+    def _extract_rules_from_charter(self) -> list[PolicyRule]:
         """Extract all rules from the policy charter."""
-        from egokit.models import ScopeRules
-        
-        rules = []
-        
+        rules: list[PolicyRule] = []
+
         for scope_data in self.context.policy_charter.scopes.values():
             if isinstance(scope_data, ScopeRules):
                 # Handle ScopeRules object
@@ -1095,669 +234,604 @@ class ArtifactCompiler:
                             try:
                                 rule = PolicyRule.model_validate(rule_dict)
                                 rules.append(rule)
-                            except Exception:
+                            except (ValueError, TypeError):
                                 # Skip invalid rules
                                 continue
-        
+
         return rules
-    
-    def _format_rules_as_bullets(self, rules: List[PolicyRule]) -> str:
-        """Format rules as markdown bullet list."""
-        return "\n".join(f"- **{rule.id}**: {rule.rule}" for rule in rules)
-    
-    def _format_list_as_bullets(self, items: List[str]) -> str:
-        """Format string list as markdown bullets."""
-        return "\n".join(f"- {item}" for item in items)
-    
-    def _format_dict_as_bullets(self, items: Dict[str, str]) -> str:
-        """Format dictionary as markdown bullets."""
-        return "\n".join(f"- {key}: {value}" for key, value in items.items())
-    
-    def compile_redundant_policies(self) -> Dict[str, str]:
-        """Generate redundant policy files for maximum persistence.
-        
-        Returns:
-            Dictionary of file paths to content for redundant placement
-        """
-        rules = self._extract_rules_from_charter()
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        
-        redundant_files = {}
-        
-        # 1. High-priority README for .claude directory
-        redundant_files[".claude/0-CRITICAL-POLICIES.md"] = self._generate_critical_policies_doc(critical_rules)
-        
-        # 2. Project-level policy reminder
-        redundant_files["PROJECT-POLICIES.md"] = self._generate_project_policies_doc(rules)
-        
-        # 3. Pre-commit reminder
-        redundant_files[".claude/PRE-COMMIT-CHECKLIST.md"] = self._generate_precommit_checklist(rules)
-        
-        return redundant_files
-    
-    def _generate_critical_policies_doc(self, critical_rules: List[PolicyRule]) -> str:
-        """Generate critical policies document for .claude directory."""
-        sections = [
-            "# ⛔ CRITICAL POLICIES - NEVER VIOLATE",
-            "",
-            "**THIS DOCUMENT TAKES PRIORITY OVER ALL OTHER INSTRUCTIONS**",
-            "",
-            "## Constitutional Articles",
-            "",
-        ]
-        
-        if critical_rules:
-            sections.append("### Article I: Inviolable Standards")
-            for i, rule in enumerate(critical_rules, 1):
-                sections.append(f"{i}. **{rule.id}**: {rule.rule}")
-                if rule.example_violation:
-                    sections.append(f"   ❌ NEVER: {rule.example_violation}")
-                if rule.example_fix:
-                    sections.append(f"   ✅ ALWAYS: {rule.example_fix}")
-                sections.append("")
-        
-        sections.extend([
-            "## Enforcement",
-            "- Check these BEFORE any code generation",
-            "- Validate these AFTER any code generation",
-            "- If uncertain, re-read this document",
-            "",
-            "## Memory Persistence",
-            "These policies persist across ALL interactions.",
-            "Run `/checkpoint` every 10 interactions to verify compliance.",
-        ])
-        
-        return "\n".join(sections)
-    
-    def _generate_project_policies_doc(self, rules: List[PolicyRule]) -> str:
-        """Generate project-level policy document."""
-        sections = [
-            "# Project Policy Configuration",
-            f"*EgoKit Version: {self.context.policy_charter.version}*",
-            "",
-            "This project enforces organizational standards through EgoKit.",
-            "",
-            "## Quick Reference",
-            "",
-            "### Critical Policies",
-        ]
-        
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        for rule in critical_rules[:5]:  # Top 5 critical
-            sections.append(f"- {rule.id}: {rule.rule}")
-        
-        sections.extend([
-            "",
-            "### Your Configuration",
-            f"- **Role**: {self.context.ego_config.role}",
-            f"- **Style**: {self.context.ego_config.tone.voice}",
-            f"- **Verbosity**: {self.context.ego_config.tone.verbosity}",
-            "",
-            "### Commands",
-            "- `/checkpoint` - Verify policy memory",
-            "- `/refresh-policies` - Reload configuration",
-            "- `/before-code` - Pre-code checklist",
-            "",
-            "## Full Details",
-            "See CLAUDE.md for complete policy documentation.",
-        ])
-        
-        return "\n".join(sections)
-    
-    def _generate_precommit_checklist(self, rules: List[PolicyRule]) -> str:
-        """Generate pre-commit checklist document."""
-        sections = [
-            "# Pre-Commit Policy Checklist",
-            "",
-            "**Run through this checklist before EVERY commit**",
-            "",
-            "## Security Checks",
-        ]
-        
-        security_rules = [r for r in rules if "security" in (r.tags or [])]
-        for rule in security_rules[:3]:
-            sections.append(f"- [ ] {rule.rule}")
-        
-        sections.extend([
-            "",
-            "## Code Quality",
-        ])
-        
-        quality_rules = [r for r in rules if r.severity == Severity.WARNING]
-        for rule in quality_rules[:3]:
-            sections.append(f"- [ ] {rule.rule}")
-        
-        sections.extend([
-            "",
-            "## Validation",
-            "- [ ] Run `/validate` command",
-            "- [ ] All tests pass",
-            "- [ ] No policy violations",
-            "",
-            "## Reminder",
-            "If any item fails, fix it before committing.",
-            "Run `/refresh-policies` if you're unsure about any policy.",
-        ])
-        
-        return "\n".join(sections)
-    
-    def compile_cursor_artifacts(self) -> Dict[str, str]:
-        """Generate Cursor IDE configuration artifacts.
-        
-        Cursor supports both legacy .cursorrules files and modern .cursor/rules/ 
-        MDC (Markdown Components) files with metadata frontmatter.
-        
-        Returns:
-            Dictionary of artifact paths to their content
-        """
-        artifacts: Dict[str, str] = {}
-        rules = self._extract_rules_from_charter()
-        
-        # Generate legacy .cursorrules for backward compatibility
-        artifacts[".cursorrules"] = self._compile_cursor_rules_file(rules)
-        
-        # Generate modern MDC rule files in .cursor/rules/
-        mdc_artifacts = self._compile_cursor_mdc_rules(rules)
-        artifacts.update(mdc_artifacts)
-        
-        return artifacts
-    
-    def _compile_cursor_rules_file(self, rules: List[PolicyRule]) -> str:
-        """Generate .cursorrules file for Cursor IDE (legacy format).
-        
-        Args:
-            rules: Policy rules to include
-            
-        Returns:
-            Content for .cursorrules file
-        """
+
+    def _compile_agents_project_overview(self) -> list[str]:
+        """Generate Project Overview section for AGENTS.md."""
         ego = self.context.ego_config
-        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
-        warning_rules = [r for r in rules if r.severity == Severity.WARNING]
-        
         sections = [
-            f"# Cursor IDE Configuration",
-            f"Generated: {self.context.generation_timestamp.isoformat()} | Version: {self.context.policy_charter.version}",
+            "## Project Overview",
             "",
-            "## Agent Configuration",
-            f"You are a {ego.role} with the following characteristics:",
-            f"- Voice: {ego.tone.voice}",
-            f"- Verbosity: {ego.tone.verbosity}",
+            f"You are a **{ego.role}** working on this codebase.",
             "",
         ]
-        
-        if ego.tone.formatting:
+
+        if ego.tone:
             sections.extend([
-                "## Formatting Guidelines",
-                self._format_list_as_bullets(ego.tone.formatting),
+                f"**Communication Style:** {ego.tone.voice}",
+                f"**Verbosity:** {ego.tone.verbosity}",
                 "",
             ])
-        
+
+        if ego.defaults:
+            sections.append("**Development Approach:**")
+            for key, value in ego.defaults.items():
+                readable_key = key.replace("_", " ").title()
+                sections.append(f"- {readable_key}: {value}")
+            sections.append("")
+
+        return sections
+
+    def _compile_agents_setup_commands(self) -> list[str]:
+        """Generate Setup Commands section for AGENTS.md."""
+        sections = [
+            "## Setup Commands",
+            "",
+        ]
+
+        # Check for setup info in charter metadata
+        metadata = self.context.policy_charter.metadata
+        if "setup" in metadata:
+            setup = metadata["setup"]
+            if isinstance(setup, dict):
+                for cmd_name, cmd_value in setup.items():
+                    sections.append(f"- **{cmd_name.title()}:** `{cmd_value}`")
+            sections.append("")
+        else:
+            # Provide sensible defaults
+            sections.extend([
+                "- **Install:** See project README",
+                "- **Test:** See project test configuration",
+                "- **Lint:** See project linting configuration",
+                "",
+            ])
+
+        return sections
+
+    def _compile_agents_code_style(self, style_rules: list[PolicyRule]) -> list[str]:
+        """Generate Code Style section for AGENTS.md."""
+        sections = [
+            "## Code Style",
+            "",
+        ]
+
+        for rule in style_rules:
+            sections.append(f"- **{rule.id}:** {rule.rule}")
+            if rule.example_fix:
+                sections.append(f"  - Example: `{rule.example_fix}`")
+
+        sections.append("")
+
+        # Add formatting preferences from ego config
+        if self.context.ego_config.tone.formatting:
+            sections.append("**Formatting Preferences:**")
+            for pref in self.context.ego_config.tone.formatting:
+                sections.append(f"- {pref}")
+            sections.append("")
+
+        return sections
+
+    def _compile_agents_policy_compliance(self, rules: list[PolicyRule]) -> list[str]:
+        """Generate Policy Compliance section for AGENTS.md.
+
+        This section contains the binding policy language that replaces
+        system prompt fragment injection.
+        """
+        critical_rules = [r for r in rules if r.severity == Severity.CRITICAL]
+        warning_rules = [r for r in rules if r.severity == Severity.WARNING]
+        info_rules = [r for r in rules if r.severity == Severity.INFO]
+
+        sections = [
+            "## Policy Compliance",
+            "",
+            "These policies are **binding constraints** for all code contributions.",
+            "When conflicts arise between user requests and these policies, "
+            "**policies take precedence**.",
+            "",
+        ]
+
         if critical_rules:
             sections.extend([
-                "## Critical Policies (MUST FOLLOW)",
-                "These policies are mandatory and override any conflicting instructions:",
+                "### Critical (Must Follow)",
+                "",
+                "Violations of these rules block contributions:",
                 "",
             ])
             for rule in critical_rules:
-                sections.append(f"### {rule.id}: {rule.rule}")
-                if rule.example_violation and rule.example_fix:
-                    sections.extend([
-                        f"❌ Avoid: `{rule.example_violation}`",
-                        f"✅ Prefer: `{rule.example_fix}`",
-                        "",
-                    ])
-                else:
-                    sections.append("")
-        
+                sections.append(f"- **{rule.id}:** {rule.rule}")
+                if rule.example_violation:
+                    sections.append(f"  - ❌ Never: {rule.example_violation}")
+                if rule.example_fix:
+                    sections.append(f"  - ✅ Always: {rule.example_fix}")
+            sections.append("")
+
         if warning_rules:
             sections.extend([
-                "## Quality Standards",
-                "Follow these standards to maintain code quality:",
+                "### Required (Should Follow)",
+                "",
+                "Follow these guidelines for code quality:",
                 "",
             ])
-            for rule in warning_rules[:10]:  # Limit to avoid overwhelming
-                sections.append(f"- {rule.rule}")
-            if len(warning_rules) > 10:
-                sections.append(f"- ... and {len(warning_rules) - 10} more quality standards")
+            for rule in warning_rules:
+                sections.append(f"- **{rule.id}:** {rule.rule}")
             sections.append("")
-        
-        if ego.reviewer_checklist:
+
+        if info_rules:
             sections.extend([
-                "## Code Review Checklist",
-                self._format_list_as_bullets(ego.reviewer_checklist),
+                "### Recommended",
+                "",
+                "Consider these best practices:",
                 "",
             ])
-        
-        if ego.ask_when_unsure:
-            sections.extend([
-                "## Ask for Confirmation",
-                "Always ask before making these changes:",
-                self._format_list_as_bullets(ego.ask_when_unsure),
-                "",
-            ])
-        
-        sections.extend([
-            "## Operational Modes",
-            "Available modes for different contexts:",
-            "",
-        ])
-        
-        if ego.modes:
-            for mode_name, mode_config in ego.modes.items():
-                sections.append(f"### Mode: {mode_name}")
-                sections.append(f"- Verbosity: {mode_config.verbosity}")
-                if mode_config.focus:
-                    sections.append(f"- Focus: {mode_config.focus}")
-                sections.append("")
-        
-        return "\n".join(sections)
-    
-    def _compile_cursor_mdc_rules(self, rules: List[PolicyRule]) -> Dict[str, str]:
-        """Generate MDC rule files for Cursor's modern configuration system.
-        
-        MDC files support frontmatter metadata for priority, scope, and other settings.
-        
-        Args:
-            rules: Policy rules to compile
-            
-        Returns:
-            Dictionary of MDC file paths to their content
-        """
-        mdc_files: Dict[str, str] = {}
-        
-        # Group rules by category based on tags
-        security_rules = [r for r in rules if "security" in (r.tags or [])]
-        quality_rules = [r for r in rules if r.severity == Severity.WARNING]
-        doc_rules = [r for r in rules if "documentation" in (r.tags or []) or "docs" in (r.tags or [])]
-        
-        # Generate security rules MDC if we have security rules
-        if security_rules:
-            mdc_files[".cursor/rules/security-policies.mdc"] = self._compile_mdc_rule_file(
-                title="Security Policies",
-                description="Critical security requirements that must be followed",
-                priority="high",
-                rules=security_rules
-            )
-        
-        # Generate quality standards MDC if we have quality rules
-        if quality_rules:
-            mdc_files[".cursor/rules/quality-standards.mdc"] = self._compile_mdc_rule_file(
-                title="Quality Standards",
-                description="Code quality guidelines and best practices",
-                priority="medium",
-                rules=quality_rules
-            )
-        
-        # Generate documentation rules MDC if we have doc rules
-        if doc_rules:
-            mdc_files[".cursor/rules/documentation-standards.mdc"] = self._compile_mdc_rule_file(
-                title="Documentation Standards",
-                description="Requirements for code documentation and comments",
-                priority="medium",
-                rules=doc_rules
-            )
-        
-        # Always generate team conventions MDC
-        ego = self.context.ego_config
-        mdc_files[".cursor/rules/team-conventions.mdc"] = self._compile_team_conventions_mdc(ego)
-        
-        return mdc_files
-    
-    def _compile_mdc_rule_file(
-        self, 
-        title: str, 
-        description: str, 
-        priority: str, 
-        rules: List[PolicyRule]
-    ) -> str:
-        """Generate an MDC rule file with frontmatter and content.
-        
-        Args:
-            title: Rule file title
-            description: Rule file description
-            priority: Priority level (high, medium, low)
-            rules: Policy rules to include
-            
-        Returns:
-            MDC file content with frontmatter
-        """
+            for rule in info_rules:
+                sections.append(f"- **{rule.id}:** {rule.rule}")
+            sections.append("")
+
+        return sections
+
+    def _compile_agents_testing(self, testing_rules: list[PolicyRule]) -> list[str]:
+        """Generate Testing Instructions section for AGENTS.md."""
         sections = [
-            "---",
-            f"title: {title}",
-            f"description: {description}",
-            f"priority: {priority}",
-            f'scope: "**/*.{{js,ts,py,java,go,rs,cpp,c,h}}"',
-            "---",
-            "",
-            f"# {title}",
-            "",
-            description,
+            "## Testing Instructions",
             "",
         ]
-        
-        # Group by severity
-        critical = [r for r in rules if r.severity == Severity.CRITICAL]
-        warning = [r for r in rules if r.severity == Severity.WARNING]
-        
-        if critical:
-            sections.extend([
-                "## Critical Requirements",
-                "",
-                "These must always be followed:",
-                "",
-            ])
-            for rule in critical:
-                sections.append(f"### {rule.id}")
-                sections.append(rule.rule)
-                sections.append("")
-                if rule.example_violation and rule.example_fix:
-                    sections.extend([
-                        "**Example:**",
-                        f"- ❌ Incorrect: `{rule.example_violation}`",
-                        f"- ✅ Correct: `{rule.example_fix}`",
-                        "",
-                    ])
-        
-        if warning:
-            sections.extend([
-                "## Best Practices",
-                "",
-                "Follow these guidelines for quality code:",
-                "",
-            ])
-            for rule in warning[:15]:  # Limit to avoid overwhelming
-                sections.append(f"- **{rule.id}**: {rule.rule}")
-            if len(warning) > 15:
-                sections.append(f"- ... and {len(warning) - 15} more best practices")
-            sections.append("")
-        
-        return "\n".join(sections)
-    
-    def _compile_team_conventions_mdc(self, ego: EgoConfig) -> str:
-        """Generate team conventions MDC file from ego configuration.
-        
-        Args:
-            ego: Ego configuration with team preferences
-            
-        Returns:
-            MDC file content for team conventions
-        """
+
+        for rule in testing_rules:
+            sections.append(f"- {rule.rule}")
+
+        sections.append("")
+        return sections
+
+    def _compile_agents_security(self, security_rules: list[PolicyRule]) -> list[str]:
+        """Generate Security Considerations section for AGENTS.md."""
         sections = [
-            "---",
-            "title: Team Conventions",
-            "description: Organization-specific coding conventions and practices",
-            "priority: high",
-            'scope: "**/*"',
-            "---",
+            "## Security Considerations",
             "",
-            "# Team Conventions",
-            "",
-            f"## Your Role",
-            f"You are a {ego.role} working on this codebase.",
-            "",
-            f"## Communication Style",
-            f"- Voice: {ego.tone.voice}",
-            f"- Verbosity: {ego.tone.verbosity}",
+            "Pay special attention to these security requirements:",
             "",
         ]
-        
-        if ego.defaults:
-            sections.extend([
-                "## Development Defaults",
-            ])
-            # Handle defaults as either dict or object attributes
-            if isinstance(ego.defaults, dict):
-                for key, value in ego.defaults.items():
-                    formatted_key = key.replace('_', ' ').title()
-                    sections.append(f"- {formatted_key}: {value}")
-            else:
-                # If defaults has attributes (not a dict)
-                if hasattr(ego.defaults, 'structure'):
-                    sections.append(f"- Structure: {ego.defaults.structure}")
-                if hasattr(ego.defaults, 'code_style'):
-                    sections.append(f"- Code Style: {ego.defaults.code_style}")
-                if hasattr(ego.defaults, 'documentation'):
-                    sections.append(f"- Documentation: {ego.defaults.documentation}")
-                if hasattr(ego.defaults, 'testing'):
-                    sections.append(f"- Testing: {ego.defaults.testing}")
-            sections.append("")
-        
-        if ego.reviewer_checklist:
-            sections.extend([
-                "## Review Checklist",
-                "",
-                "When reviewing code, check for:",
-                "",
-            ])
-            for item in ego.reviewer_checklist:
-                sections.append(f"- {item}")
-            sections.append("")
-        
-        if ego.ask_when_unsure:
-            sections.extend([
-                "## Require Confirmation",
-                "",
-                "Always ask before:",
-                "",
-            ])
-            for item in ego.ask_when_unsure:
-                sections.append(f"- {item}")
-            sections.append("")
-        
-        return "\n".join(sections)
+
+        for rule in security_rules:
+            severity_marker = "🔴" if rule.severity == Severity.CRITICAL else "🟡"
+            sections.append(f"- {severity_marker} **{rule.id}:** {rule.rule}")
+
+        sections.append("")
+        return sections
+
+    def _compile_agents_commands_reference(self) -> list[str]:
+        """Generate EgoKit Commands reference section for AGENTS.md."""
+        return [
+            "## EgoKit Commands",
+            "",
+            "This project uses EgoKit for policy management. Available commands:",
+            "",
+            "- `/ego-validate` — Check current work against policies",
+            "- `/ego-rules` — View active policies",
+            "- `/ego-stats` — Analyze violation patterns from git history",
+            "- `/ego-suggest` — Propose new rules based on codebase patterns",
+            "- `/ego-checkpoint` — Pre-change compliance snapshot",
+            "- `/ego-review` — Pre-commit review checklist",
+            "- `/ego-security` — Activate security-focused mode",
+            "- `/ego-refresh` — Re-read policy context",
+            "",
+            "---",
+            "",
+            f"*Policy Charter Version: {self.context.policy_charter.version}*",
+            "",
+        ]
+
+    def compile_all_artifacts(
+        self,
+        existing_agents_md: str | None = None,
+    ) -> dict[str, str]:
+        """Generate all artifacts: AGENTS.md and slash commands for both tools.
+
+        This is the primary compilation method for the AGENTS.md-first approach.
+        It generates:
+        - AGENTS.md (the universal policy artifact)
+        - .claude/commands/ego-*.md (Claude Code slash commands)
+        - .augment/commands/ego-*.md (Auggie CLI slash commands)
+
+        For AGENTS.md, uses hybrid ownership model:
+        - If existing_agents_md is None: generates full template with placeholders
+        - If existing_agents_md has markers: replaces content between markers
+        - If existing_agents_md has no markers: appends section (caller should confirm)
+
+        Args:
+            existing_agents_md: Existing AGENTS.md content, or None if file
+                doesn't exist
+
+        Returns:
+            Dictionary mapping file paths to their content
+        """
+        artifacts: dict[str, str] = {}
+
+        # Generate AGENTS.md using injection/template approach
+        artifacts["AGENTS.md"] = self.inject_egokit_section(existing_agents_md)
+
+        # Generate slash commands for both tool directories
+        commands = self.compile_slash_commands()
+        for cmd_name, cmd_content in commands.items():
+            artifacts[f".claude/commands/{cmd_name}"] = cmd_content
+            artifacts[f".augment/commands/{cmd_name}"] = cmd_content
+
+        return artifacts
+
+    def compile_slash_commands(self) -> dict[str, str]:
+        """Generate slash commands for both Claude Code and Auggie CLI.
+
+        All commands use the 'ego-' prefix to avoid collision with built-in
+        commands. Commands are pure AI prompts with no CLI/bash dependencies.
+
+        Returns:
+            Dictionary mapping command filenames to their content.
+            Keys are like 'ego-validate.md', values are the markdown content.
+        """
+        commands: dict[str, str] = {}
+
+        # Core policy commands
+        commands["ego-validate.md"] = self._generate_ego_validate_command()
+        commands["ego-rules.md"] = self._generate_ego_rules_command()
+        commands["ego-stats.md"] = self._generate_ego_stats_command()
+        commands["ego-suggest.md"] = self._generate_ego_suggest_command()
+
+        # Workflow commands
+        commands["ego-checkpoint.md"] = self._generate_ego_checkpoint_command()
+        commands["ego-review.md"] = self._generate_ego_review_command()
+        commands["ego-security.md"] = self._generate_ego_security_command()
+        commands["ego-refresh.md"] = self._generate_ego_refresh_command()
+
+        return commands
+
+    def _generate_ego_validate_command(self) -> str:
+        """Generate /ego-validate command as pure AI prompt."""
+        return """---
+description: Validate current work against organizational policies
+argument-hint: [file/path]
+---
+
+# Validate Against Policies
+
+Review the code for compliance with this project's policies defined in AGENTS.md.
+
+## Instructions
+
+1. Read the "Policy Compliance" section from AGENTS.md in this repository
+2. Analyze the specified file (or current file if none specified, or staged
+   changes if no file context)
+3. For each applicable policy rule:
+   - Check if the code complies
+   - Note any violations with the rule ID and explanation
+4. Summarize findings:
+   - ✅ Compliant rules
+   - ⚠️ Warnings (non-blocking)
+   - ❌ Violations (must fix)
+
+## Output Format
+
+For each issue found:
+```
+[RULE-ID] severity: description
+  → file:line - specific issue
+  → Suggested fix: ...
+```
+
+If no issues: "✅ All policies satisfied."
+"""
+
+    def _generate_ego_rules_command(self) -> str:
+        """Generate /ego-rules command as pure AI prompt."""
+        return """---
+description: Display active policies for this project
+argument-hint: [category]
+---
+
+# Show Active Policies
+
+Display the organizational policies that govern this project.
+
+## Instructions
+
+1. Read AGENTS.md from this repository
+2. Extract the "Policy Compliance" section
+3. If a category is specified, filter to that category
+4. Present rules organized by severity:
+   - 🔴 Critical (must follow)
+   - 🟡 Warning (should follow)
+   - 🔵 Info (recommendations)
+
+## Output Format
+
+For each rule:
+```
+[RULE-ID] (severity): Brief description
+  Tags: tag1, tag2
+```
+
+Include a count summary at the end.
+"""
+
+    def _generate_ego_stats_command(self) -> str:
+        """Generate /ego-stats command as pure AI prompt."""
+        return """---
+description: Analyze policy compliance patterns from git history
+argument-hint: [--days N]
+---
+
+# Policy Compliance Statistics
+
+Analyze the git history to identify policy-related patterns and trends.
+
+## Instructions
+
+1. Run `git log --oneline -100` (or filter by --days if specified)
+2. Look for patterns:
+   - Commits mentioning "fix", "policy", "compliance", or rule IDs
+   - Repeated fixes to the same files/areas
+   - Common violation types
+3. Analyze recent changes for potential policy gaps
+4. Summarize findings with actionable insights
+
+## Output Format
+
+```
+## Compliance Trends (last N commits)
+
+### Frequently Fixed Areas
+- path/to/file.py - 5 policy-related commits
+- ...
+
+### Common Patterns
+- [PATTERN]: Description and frequency
+
+### Recommendations
+- Consider adding rule for X
+- Area Y may need additional review
+```
+"""
+
+    def _generate_ego_suggest_command(self) -> str:
+        """Generate /ego-suggest command as pure AI prompt."""
+        return """---
+description: Suggest new policy rules based on codebase patterns
+argument-hint: [focus-area]
+---
+
+# Suggest New Policies
+
+Analyze the codebase to propose new policy rules for charter.yaml.
+
+## Instructions
+
+1. Scan the codebase for consistent patterns:
+   - Naming conventions in use
+   - Error handling patterns
+   - Documentation styles
+   - Import organization
+   - Testing patterns
+2. Compare against existing rules in AGENTS.md
+3. Identify gaps where patterns exist but no rule enforces them
+4. Generate charter.yaml entries for suggested rules
+
+## Output Format
+
+For each suggestion:
+```yaml
+# Suggested rule: [brief description]
+# Rationale: [why this pattern should be codified]
+- id: SUGGESTED-XXX
+  rule: "Description of the rule"
+  severity: warning  # or critical
+  tags: [relevant, tags]
+  detector: "suggested-detector-name.v1"
+```
+
+Group suggestions by category (style, security, documentation, etc.)
+"""
+
+    def _generate_ego_checkpoint_command(self) -> str:
+        """Generate /ego-checkpoint command as pure AI prompt."""
+        return """---
+description: Pre-change compliance snapshot
+argument-hint: [task-description]
+---
+
+# Pre-Change Compliance Checkpoint
+
+Document current state and identify policies that apply to planned changes.
+
+## Instructions
+
+1. Read AGENTS.md to understand active policies
+2. Analyze the current state of files you plan to modify
+3. Identify which policy rules apply to your planned changes
+4. Create a checklist of compliance requirements
+
+## Output Format
+
+```
+## Checkpoint: [timestamp]
+
+### Files to Modify
+- file1.py - current status
+- file2.py - current status
+
+### Applicable Policies
+- [RULE-ID]: How it applies to this change
+- [RULE-ID]: How it applies to this change
+
+### Pre-Change Checklist
+- [ ] Policy requirement 1
+- [ ] Policy requirement 2
+
+### Notes
+Any special considerations or risks
+```
+
+Use this checkpoint to validate your changes before committing.
+"""
+
+    def _generate_ego_review_command(self) -> str:
+        """Generate /ego-review command as pure AI prompt."""
+        return """---
+description: Pre-commit review against policies
+argument-hint: [--staged]
+---
+
+# Pre-Commit Policy Review
+
+Review staged or recent changes against organizational policies before committing.
+
+## Instructions
+
+1. Read AGENTS.md to load active policies
+2. Analyze staged changes (run `git diff --staged`) or recent uncommitted changes
+3. For each changed file:
+   - Identify applicable policy rules
+   - Check compliance with each rule
+   - Note any violations or concerns
+4. Provide a commit readiness assessment
+
+## Output Format
+
+```
+## Pre-Commit Review
+
+### Changes Reviewed
+- file1.py: +10/-5 lines
+- file2.py: +3/-0 lines
+
+### Policy Compliance
+✅ [RULE-ID]: Compliant
+❌ [RULE-ID]: Issue found - [description]
+⚠️ [RULE-ID]: Warning - [description]
+
+### Commit Readiness
+[READY/NOT READY]: [summary]
+
+### Required Actions (if not ready)
+1. Fix issue X
+2. Address warning Y
+```
+"""
+
+    def _generate_ego_security_command(self) -> str:
+        """Generate /ego-security command as pure AI prompt."""
+        return """---
+description: Activate security-focused review mode
+argument-hint: [path/file]
+---
+
+# Security-Focused Review Mode
+
+Analyze code with heightened security awareness.
+
+## Instructions
+
+1. Read the Security Considerations section from AGENTS.md
+2. Apply security-focused analysis to the specified code:
+   - Input validation and sanitization
+   - Authentication and authorization checks
+   - Secrets and credential handling
+   - SQL injection and XSS prevention
+   - Cryptographic implementation review
+   - Dependency vulnerability awareness
+3. Flag any security concerns with severity levels
+
+## Output Format
+
+```
+## Security Review: [file/path]
+
+### Critical Issues (must fix)
+- [location]: [issue description]
+  → Recommended fix: [solution]
+
+### Warnings (should address)
+- [location]: [concern]
+  → Consideration: [guidance]
+
+### Security Checklist
+- [x] No hardcoded secrets
+- [x] Inputs validated
+- [ ] Issue: [description]
+
+### Risk Assessment
+[LOW/MEDIUM/HIGH]: [summary of security posture]
+```
+"""
+
+    def _generate_ego_refresh_command(self) -> str:
+        """Generate /ego-refresh command as pure AI prompt."""
+        return """---
+description: Re-read and internalize policy context
+---
+
+# Refresh Policy Context
+
+Re-read AGENTS.md to ensure current policy awareness.
+
+## Instructions
+
+1. Read the complete AGENTS.md file
+2. Summarize the key policies you must follow
+3. Confirm your understanding of:
+   - Critical rules that must never be violated
+   - Required practices for code quality
+   - Security considerations
+4. Acknowledge the refresh with a brief summary
+
+## Output Format
+
+```
+## Policy Refresh Complete
+
+### Critical Policies (must follow)
+- [RULE-ID]: [brief description]
+- [RULE-ID]: [brief description]
+
+### Key Requirements
+- [requirement 1]
+- [requirement 2]
+
+### Security Focus Areas
+- [area 1]
+- [area 2]
+
+✅ Policies refreshed and internalized.
+```
+
+Run this command periodically during long sessions to prevent policy drift.
+"""
 
 
 class ArtifactInjector:
-    """Injects compiled artifacts into target repositories."""
-    
+    """Injects compiled artifacts into target repositories.
+
+    This class provides a simple interface for writing artifacts to disk.
+    The CLI uses direct file writing, but this class is kept for backward
+    compatibility with existing code that may depend on it.
+    """
+
     def __init__(self, target_repo: Path) -> None:
         """Initialize injector with target repository path.
-        
+
         Args:
             target_repo: Path to target repository
         """
         self.target_repo = Path(target_repo)
-    
-    def inject_claude_artifacts(self, artifacts: Dict[str, str], preserve_manual: bool = True) -> None:
-        """Inject comprehensive Claude Code artifacts into repository.
-        
+
+    def inject_artifacts(self, artifacts: dict[str, str]) -> None:
+        """Write artifacts to the target repository.
+
         Args:
-            artifacts: Dictionary of artifact paths to their content
-            preserve_manual: Whether to preserve manual sections
+            artifacts: Dictionary mapping relative paths to content
         """
         for artifact_path, content in artifacts.items():
             target_path = self.target_repo / artifact_path
-            
-            # Create parent directories if needed
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            self._write_artifact(target_path, content, preserve_manual)
-    
-    def inject_claude_md(self, content: str, preserve_manual: bool = True) -> None:
-        """Inject CLAUDE.md into repository root (legacy method).
-        
-        Args:
-            content: Compiled CLAUDE.md content
-            preserve_manual: Whether to preserve manual sections
-        """
-        target_path = self.target_repo / "CLAUDE.md"
-        self._write_artifact(target_path, content, preserve_manual)
-    
-    def inject_claude_settings(self, content: str) -> None:
-        """Inject .claude/settings.json into repository.
-        
-        Args:
-            content: JSON settings content
-        """
-        target_path = self.target_repo / ".claude" / "settings.json"
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(content, encoding="utf-8")
-    
-    def inject_claude_commands(self, commands: Dict[str, str]) -> None:
-        """Inject custom slash commands into .claude/commands/ directory.
-        
-        Args:
-            commands: Dictionary of command names to their content
-        """
-        commands_dir = self.target_repo / ".claude" / "commands"
-        commands_dir.mkdir(parents=True, exist_ok=True)
-        
-        for command_name, content in commands.items():
-            command_path = commands_dir / f"{command_name}.md"
-            command_path.write_text(content, encoding="utf-8")
-    
-    def inject_system_prompt_fragment(self, content: str) -> None:
-        """Inject system prompt fragment for --append-system-prompt usage.
-        
-        Args:
-            content: System prompt fragment content
-        """
-        fragment_dir = self.target_repo / ".claude" / "system-prompt-fragments"
-        fragment_dir.mkdir(parents=True, exist_ok=True)
-        
-        fragment_path = fragment_dir / "egokit-policies.txt"
-        fragment_path.write_text(content, encoding="utf-8")
-    
-    def inject_augment_artifacts(self, artifacts: Dict[str, str]) -> None:
-        """Inject AugmentCode artifacts into repository.
-        
-        Args:
-            artifacts: Dictionary mapping file paths to their content
-        """
-        for path, content in artifacts.items():
-            file_path = self.target_repo / path
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content, encoding="utf-8")
-    
-    def inject_augment_rules(
-        self, 
-        rules: List[PolicyRule], 
-        ego_config: EgoConfig,
-        preserve_manual: bool = True
-    ) -> None:
-        """Legacy method - Inject AugmentCode rules into .augment/rules/ directory.
-        
-        Args:
-            rules: Policy rules to inject
-            ego_config: Ego configuration for behavioral rules
-            preserve_manual: Whether to preserve manual sections
-        """
-        augment_dir = self.target_repo / ".augment" / "rules"
-        augment_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create context for compiler usage
-        from .models import CompilationContext, PolicyCharter
-        from datetime import datetime
-        
-        # Create minimal charter for compilation
-        placeholder_charter = PolicyCharter(
-            version="1.0.0",
-            scopes={},
-            metadata={}
-        )
-        
-        context = CompilationContext(
-            target_repo=self.target_repo,
-            policy_charter=placeholder_charter,
-            ego_config=ego_config,
-            generation_timestamp=datetime.now()
-        )
-        
-        # Create temporary compiler instance
-        compiler = ArtifactCompiler(context)
-        
-        # Create policy rules file
-        policy_content = compiler._compile_augment_policy_rules(rules)
-        policy_path = augment_dir / "policy-rules.md"
-        self._write_artifact(policy_path, policy_content, preserve_manual)
-        
-        # Create ego/behavioral rules file
-        ego_content = compiler._compile_augment_ego_rules(ego_config)
-        ego_path = augment_dir / "coding-style.md"
-        self._write_artifact(ego_path, ego_content, preserve_manual)
-    
-    def inject_ego_card(self, content: str, preserve_manual: bool = True) -> None:
-        """Inject EGO.md into repository root.
-        
-        Args:
-            content: Compiled ego card content
-            preserve_manual: Whether to preserve manual sections
-        """
-        target_path = self.target_repo / "EGO.md"
-        self._write_artifact(target_path, content, preserve_manual)
-    
-    def inject_cursor_artifacts(
-        self, 
-        artifacts: Dict[str, str], 
-        preserve_manual: bool = True
-    ) -> None:
-        """Inject Cursor IDE artifacts into repository.
-        
-        Handles both legacy .cursorrules and modern .cursor/rules/ MDC files.
-        
-        Args:
-            artifacts: Dictionary of artifact paths to their content
-            preserve_manual: Whether to preserve manual sections in existing files
-        """
-        for artifact_path, content in artifacts.items():
-            target_path = self.target_repo / artifact_path
-            
-            # Create parent directories if needed
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Write the artifact
-            if artifact_path.endswith('.mdc') or artifact_path == '.cursorrules':
-                # For rule files, preserve manual sections
-                self._write_artifact(target_path, content, preserve_manual)
-            else:
-                # For other files, just write directly
-                target_path.write_text(content, encoding="utf-8")
-    
-    def _write_artifact(
-        self, 
-        target_path: Path, 
-        content: str, 
-        preserve_manual: bool
-    ) -> None:
-        """Write artifact to target path with optional manual section preservation.
-        
-        Args:
-            target_path: Where to write the artifact
-            content: Content to write
-            preserve_manual: Whether to preserve existing manual sections
-        """
-        if preserve_manual and target_path.exists():
-            existing_content = target_path.read_text(encoding="utf-8")
-            content = self._merge_with_manual_sections(content, existing_content)
-        
-        target_path.write_text(content, encoding="utf-8")
-    
-    def _merge_with_manual_sections(
-        self, 
-        new_content: str, 
-        existing_content: str
-    ) -> str:
-        """Merge new content with preserved manual sections.
-        
-        Args:
-            new_content: Newly compiled content
-            existing_content: Existing file content
-            
-        Returns:
-            Merged content with manual sections preserved
-        """
-        # Look for manual sections marked with <!-- MANUAL --> comments
-        import re
-        
-        manual_sections = []
-        pattern = r"<!-- MANUAL:START -->(.*?)<!-- MANUAL:END -->"
-        
-        for match in re.finditer(pattern, existing_content, re.DOTALL):
-            manual_sections.append(match.group(1).strip())
-        
-        if manual_sections:
-            new_content += "\n\n---\n## Manual Project Notes\n\n"
-            new_content += "\n\n".join(manual_sections)
-        
-        return new_content
+            target_path.write_text(content, encoding="utf-8")

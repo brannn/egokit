@@ -1,6 +1,9 @@
 # Project design directory (development notes only)
 Project/
 
+# Planning directory (implementation plans, internal only)
+planning/
+
 # Documentation reference materials (internal use only)
 reference/
 
