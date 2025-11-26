@@ -76,7 +76,7 @@ EgoKit searches for the policy registry in these locations, in order:
 
 ## Writing Charter Rules
 
-The charter.yaml file defines enforceable policy rules. Each rule specifies what to check, how severe violations are, and which detector performs the validation.
+The charter.yaml file defines enforceable policy rules. Each rule specifies what to check and how severe violations are. AI coding agents interpret and enforce these rules.
 
 ### Charter Structure
 
@@ -88,21 +88,18 @@ scopes:
       - id: SEC-001
         rule: "Never commit credentials, API keys, or secrets to version control"
         severity: critical
-        detector: secret.regex.v1
         tags:
           - security
           - secrets
       - id: SEC-002
         rule: "Validate all external input before processing"
         severity: critical
-        detector: input.validation.v1
         tags:
           - security
     code_quality:
       - id: QUAL-001
         rule: "All public functions must have docstrings"
         severity: warning
-        detector: docstring.required.v1
         tags:
           - documentation
           - quality
@@ -138,13 +135,11 @@ scopes:
       - id: SEC-001
         rule: "Base security rule"
         severity: critical
-        detector: security.v1
   teams/backend:
     security:
       - id: SEC-001
         rule: "Backend-specific security rule (overrides global)"
         severity: critical
-        detector: security.backend.v1
 ```
 
 ## Writing Ego Configurations

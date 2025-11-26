@@ -99,7 +99,7 @@ Key responsibilities:
 The models module defines data structures for policy configuration using Pydantic.
 
 Key types:
-- PolicyRule - A single enforceable rule with id, text, severity, and detector
+- PolicyRule - A single enforceable rule with id, text, severity, and tags
 - PolicyCharter - The complete charter configuration
 - EgoConfig - AI behavior configuration
 - CompilationContext - All inputs needed for compilation
@@ -169,10 +169,6 @@ EgoKit provides several extension points for customization.
 ### Adding Slash Commands
 
 New slash commands can be added by extending the compile_slash_commands method in ArtifactCompiler. Each command requires a name and content. The content should reference AGENTS.md rather than containing policy details directly.
-
-### Custom Detectors
-
-The charter references detectors by name (e.g., secret.regex.v1). While EgoKit does not execute detectors directly (the AI tools interpret rules), the detector field provides metadata that AI tools can use for specialized handling.
 
 ### New Scope Levels
 
