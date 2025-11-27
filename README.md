@@ -116,6 +116,7 @@ EgoKit generates eight slash commands in both `.claude/commands/` and `.augment/
 | `/ego-refresh` | Re-read AGENTS.md to prevent policy drift |
 | `/ego-stats` | Analyze historical violation patterns |
 | `/ego-suggest` | Propose new rules based on codebase patterns |
+| `/ego-persona` | Switch working persona (developer, writer, reviewer, architect) |
 
 These commands are pure AI prompts that reference AGENTS.md. They contain no CLI invocations and work identically across Claude Code and Augment.
 

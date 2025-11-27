@@ -123,8 +123,8 @@ class TestArtifactCompiler:
         claude_cmds = [k for k in artifacts if k.startswith(".claude/commands/")]
         augment_cmds = [k for k in artifacts if k.startswith(".augment/commands/")]
 
-        assert len(claude_cmds) == 8, f"Expected 8 Claude commands, got {len(claude_cmds)}"
-        assert len(augment_cmds) == 8, f"Expected 8 Augment commands, got {len(augment_cmds)}"
+        assert len(claude_cmds) == 9, f"Expected 9 Claude commands, got {len(claude_cmds)}"
+        assert len(augment_cmds) == 9, f"Expected 9 Augment commands, got {len(augment_cmds)}"
 
         # Check all commands use ego-* prefix
         for cmd_path in claude_cmds + augment_cmds:
@@ -537,10 +537,10 @@ class TestAgentParity:
                 f"Command {cmd_name} differs between Claude and Augment"
             )
 
-    def test_all_eight_commands_generated_for_both_agents(
+    def test_all_nine_commands_generated_for_both_agents(
         self, sample_context: CompilationContext,
     ) -> None:
-        """Verify all 8 ego-* commands are generated for both agents."""
+        """Verify all 9 ego-* commands are generated for both agents."""
         compiler = ArtifactCompiler(sample_context)
         artifacts = compiler.compile_all_artifacts()
 
@@ -553,6 +553,7 @@ class TestAgentParity:
             "ego-review.md",
             "ego-security.md",
             "ego-refresh.md",
+            "ego-persona.md",
         }
 
         claude_cmds = {

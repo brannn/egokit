@@ -424,6 +424,7 @@ class ArtifactCompiler:
             "- `/ego-review` — Pre-commit review checklist",
             "- `/ego-security` — Activate security-focused mode",
             "- `/ego-refresh` — Re-read policy context",
+            "- `/ego-persona` — Switch working persona (developer, writer, reviewer, architect)",
             "",
             "---",
             "",
@@ -491,6 +492,7 @@ class ArtifactCompiler:
         commands["ego-review.md"] = self._generate_ego_review_command()
         commands["ego-security.md"] = self._generate_ego_security_command()
         commands["ego-refresh.md"] = self._generate_ego_refresh_command()
+        commands["ego-persona.md"] = self._generate_ego_persona_command()
 
         return commands
 
@@ -839,6 +841,67 @@ Re-read AGENTS.md to ensure current policy awareness.
 ```
 
 Run this command periodically during long sessions to prevent policy drift.
+"""
+
+    def _generate_ego_persona_command(self) -> str:
+        """Generate /ego-persona command as pure AI prompt."""
+        return """---
+description: Switch to a specific working persona
+argument-hint: <developer|writer|reviewer|architect>
+---
+
+# Switch Working Persona
+
+Adopt a distinct working persona that changes how you approach tasks.
+
+## Available Personas
+
+### developer (default)
+Implementation-focused. Prioritize:
+- Code correctness and quality
+- Testing and validation
+- Following established patterns
+- Practical, working solutions
+
+### writer
+Technical documentation focus. Prioritize:
+- Clarity and readability for the target audience
+- Structured information architecture
+- Consistent terminology and style
+- Reference DOCUMENTATION.md guidelines if present
+- No jargon without explanation
+- Examples that illuminate concepts
+
+### reviewer
+Critical analysis mode. Prioritize:
+- Finding issues, not fixing them
+- Security, performance, and maintainability concerns
+- Asking clarifying questions
+- Noting what's missing, not just what's wrong
+- Providing actionable feedback
+
+### architect
+System-level thinking. Prioritize:
+- Trade-off analysis and long-term implications
+- Component boundaries and interfaces
+- Scalability and extensibility considerations
+- Diagrams and visual explanations when helpful
+- Questioning assumptions about requirements
+
+## Instructions
+
+1. Acknowledge the persona switch
+2. Adjust your approach according to the persona's priorities
+3. Maintain the persona until explicitly changed or session ends
+4. If no persona specified, show this list
+
+## Output Format
+
+```
+Switched to [persona] persona.
+
+Now prioritizing: [key focus areas]
+```
 """
 
 

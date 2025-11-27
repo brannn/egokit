@@ -5,6 +5,17 @@ All notable changes to EgoKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-11-27
+
+### Added
+- `/ego-persona` command to switch between distinct working personas
+- Four personas: developer (default), writer, reviewer, architect
+- Writer persona references DOCUMENTATION.md guidelines for technical writing tasks
+
+### Changed
+- Now generates 9 slash commands (added ego-persona)
+- Updated README.md, USER_GUIDE.md, and AGENTS.md with new command
+
 ## [1.0.1] - 2025-11-27
 
 ### Changed

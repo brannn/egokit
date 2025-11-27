@@ -244,7 +244,8 @@ project/
 │       ├── ego-security.md
 │       ├── ego-refresh.md
 │       ├── ego-stats.md
-│       └── ego-suggest.md
+│       ├── ego-suggest.md
+│       └── ego-persona.md
 └── .augment/
     └── commands/
         └── (identical commands)
@@ -315,6 +316,17 @@ Analyzes historical violation patterns from git history. Use this to identify re
 ### /ego-suggest
 
 Proposes new rules based on codebase patterns. Use this to discover implicit standards that should become explicit policies.
+
+### /ego-persona
+
+Switches the AI agent to a distinct working persona. Available personas:
+
+- **developer** (default): Implementation-focused with emphasis on code quality and testing
+- **writer**: Technical documentation focus with emphasis on clarity, audience awareness, and DOCUMENTATION.md guidelines
+- **reviewer**: Critical analysis mode focused on finding issues rather than fixing them
+- **architect**: System-level thinking with emphasis on trade-offs, boundaries, and long-term implications
+
+Use `/ego-persona writer` before documentation tasks, or `/ego-persona reviewer` when you want critical feedback without immediate fixes.
 
 ## Troubleshooting
 

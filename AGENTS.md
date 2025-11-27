@@ -99,6 +99,7 @@ This project uses EgoKit for policy management. Available commands:
 - `/ego-review` — Pre-commit review checklist
 - `/ego-security` — Activate security-focused mode
 - `/ego-refresh` — Re-read policy context
+- `/ego-persona` — Switch working persona (developer, writer, reviewer, architect)
 
 ---
 
