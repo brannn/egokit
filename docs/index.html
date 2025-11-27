@@ -16,8 +16,20 @@
     
     /* Hero */
     .hero { text-align: center; margin-bottom: 48px; }
-    .logo { font-size: 48px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+    .logo { font-size: 48px; font-weight: 700; color: #fff; margin-bottom: 4px; }
     .logo span { color: #4a90a4; }
+    .brand-tagline {
+      display: inline-block;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #5a7a8e, #4a90a4, #7ee787);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+    }
     .tagline { font-size: 20px; color: #8a9aaa; margin-bottom: 24px; line-height: 1.5; max-width: 600px; margin-left: auto; margin-right: auto; }
     .links { display: flex; gap: 16px; justify-content: center; margin-top: 24px; }
     .links a {
@@ -30,6 +42,18 @@
     .links .secondary { background: #1a2a3a; color: #c0d0e0; border: 1px solid #2a3a4a; }
     .links .secondary:hover { background: #2a3a4a; }
     .links svg { width: 18px; height: 18px; }
+
+    /* Works with */
+    .works-with { margin-top: 32px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .works-with-label { font-size: 13px; color: #5a7a8e; text-transform: uppercase; letter-spacing: 1px; }
+    .works-with-logos { display: flex; gap: 40px; align-items: center; }
+    .tool-logo { height: 32px; opacity: 0.85; transition: opacity 0.2s; }
+    .tool-logo:hover { opacity: 1; }
+    .claude-logo { height: 28px; }
+    .augment-brand { display: flex; align-items: center; gap: 8px; opacity: 0.85; transition: opacity 0.2s; }
+    .augment-brand:hover { opacity: 1; }
+    .augment-logo { height: 28px; opacity: 1; }
+    .augment-text { color: #fff; font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
 
     /* Terminal */
     .terminal-section { margin-bottom: 32px; }
@@ -45,6 +69,23 @@
       padding: 20px; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
       font-size: 14px; line-height: 1.6; color: #c9d1d9; min-height: 300px; white-space: pre-wrap;
     }
+    .terminal-input { background: #0d2137; padding: 12px 16px; }
+    .input-row {
+      display: flex; align-items: center; background: #0a1929;
+      border: 1px solid #1e3a50; border-radius: 4px; padding: 10px 14px;
+    }
+    .input-prompt { color: #6b8a9e; margin-right: 10px; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
+    .input-text {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: #c9d1d9; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 14px;
+    }
+    .input-text::placeholder { color: #4a6a7e; }
+    .input-hint {
+      color: #4a6a7e; font-size: 12px; margin-top: 8px; padding-left: 4px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      display: flex; justify-content: space-between;
+    }
+    .input-path { color: #4a90a4; }
 
     /* Commands */
     .commands { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; }
@@ -78,6 +119,7 @@
   <div class="container">
     <header class="hero">
       <h1 class="logo">Ego<span>Kit</span></h1>
+      <p class="brand-tagline">Opinionated AI</p>
       <p class="tagline">Define policies for your AI coding agents once. Compile to AGENTS.md and continuously work with them using slash commands.</p>
       <div class="links">
         <a href="https://github.com/brannn/egokit" class="secondary">
@@ -88,6 +130,16 @@
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
           Install from PyPI
         </a>
+      </div>
+      <div class="works-with">
+        <span class="works-with-label">Works with</span>
+        <div class="works-with-logos">
+          <img src="claude-logo.svg" alt="Claude Code" class="tool-logo claude-logo">
+          <div class="augment-brand">
+            <img src="augment-logo.svg" alt="Augment Code" class="tool-logo augment-logo">
+            <span class="augment-text">Augment Code</span>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -102,6 +154,16 @@
           <div class="terminal-title">AI Coding Agent — AGENTS.md</div>
         </div>
         <div class="terminal-body" id="terminal"></div>
+        <div class="terminal-input">
+          <div class="input-row">
+            <span class="input-prompt">/</span>
+            <input type="text" class="input-text" id="commandInput" placeholder="ego-rules">
+          </div>
+          <div class="input-hint">
+            <span>↑↓ to select • Enter to run • Esc to cancel</span>
+            <span class="input-path">~/project</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -234,12 +296,16 @@ Scanned <span class="info">127 commits</span> from the last 30 days.
 
 const commandsEl = document.getElementById('commands');
 const terminalEl = document.getElementById('terminal');
+const inputEl = document.getElementById('commandInput');
 
 function showCommand(cmd) {
+  cmd = cmd.replace(/^\//, '');
   if (commands[cmd]) {
     document.querySelectorAll('.commands button').forEach(b => b.classList.remove('active'));
     document.querySelector(`[data-cmd="${cmd}"]`)?.classList.add('active');
     terminalEl.innerHTML = commands[cmd];
+    inputEl.value = '';
+    inputEl.placeholder = 'Try another /ego-* command';
   }
 }
 
@@ -250,6 +316,12 @@ Object.keys(commands).forEach((cmd, i) => {
   btn.onclick = () => showCommand(cmd);
   commandsEl.appendChild(btn);
   if (i === 0) btn.click();
+});
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    showCommand(inputEl.value.trim());
+  }
 });
   </script>
 </body>
