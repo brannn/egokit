@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EgoKit — Policy Engine for AI Coding Agents</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .container { max-width: 1000px; margin: 0 auto; padding: 60px 24px; }
+    
+    /* Hero */
+    .hero { text-align: center; margin-bottom: 48px; }
+    .logo { font-size: 48px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+    .logo span { color: #4a90a4; }
+    .tagline { font-size: 20px; color: #8a9aaa; margin-bottom: 24px; line-height: 1.5; max-width: 600px; margin-left: auto; margin-right: auto; }
+    .links { display: flex; gap: 16px; justify-content: center; margin-top: 24px; }
+    .links a {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 6px; text-decoration: none;
+      font-size: 14px; font-weight: 500; transition: all 0.2s;
+    }
+    .links .primary { background: #4a90a4; color: #fff; }
+    .links .primary:hover { background: #5aa0b4; }
+    .links .secondary { background: #1a2a3a; color: #c0d0e0; border: 1px solid #2a3a4a; }
+    .links .secondary:hover { background: #2a3a4a; }
+    .links svg { width: 18px; height: 18px; }
+
+    /* Terminal */
+    .terminal-section { margin-bottom: 32px; }
+    .section-label { font-size: 13px; color: #5a7a8e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; text-align: center; }
+    .terminal { background: #0a1929; border-radius: 8px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .terminal-header { background: #0d2137; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+    .terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .terminal-dot.red { background: #ff5f56; }
+    .terminal-dot.yellow { background: #ffbd2e; }
+    .terminal-dot.green { background: #27c93f; }
+    .terminal-title { flex: 1; text-align: center; color: #6b8a9e; font-size: 13px; }
+    .terminal-body {
+      padding: 20px; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 14px; line-height: 1.6; color: #c9d1d9; min-height: 300px; white-space: pre-wrap;
+    }
+
+    /* Commands */
+    .commands { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; }
+    .commands button {
+      padding: 8px 14px; border: none; border-radius: 20px;
+      background: #1a2a3a; color: #8a9aaa; cursor: pointer;
+      font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace; transition: all 0.2s;
+    }
+    .commands button:hover { background: #2a3a4a; color: #c0d0e0; }
+    .commands button.active { background: #4a90a4; color: #fff; }
+
+    /* Tokens */
+    .prompt { color: #7ee787; }
+    .command { color: #7eb8da; }
+    .heading { color: #fff; font-weight: 600; }
+    .success { color: #7ee787; }
+    .warning { color: #e8b84a; }
+    .error { color: #f47067; }
+    .muted { color: #5a7a8e; }
+    .info { color: #7eb8da; }
+    .dim { color: #4a6a7e; }
+    .rule-id { color: #9ecbff; }
+    .separator { color: #2a4a5e; }
+
+    /* Footer */
+    .footer { text-align: center; color: #4a5a6a; font-size: 13px; margin-top: 48px; }
+    .footer code { background: #1a2a3a; padding: 2px 8px; border-radius: 4px; color: #7eb8da; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <h1 class="logo">Ego<span>Kit</span></h1>
+      <p class="tagline">Define policies once. Compile them into AGENTS.md for any AI coding tool. Keep your AI agents aligned with your standards.</p>
+      <div class="links">
+        <a href="https://github.com/brannn/egokit" class="secondary">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <a href="https://pypi.org/project/egokit/" class="primary">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Install from PyPI
+        </a>
+      </div>
+    </header>
+
+    <section class="terminal-section">
+      <p class="section-label">See it in action</p>
+      <div class="commands" id="commands"></div>
+      <div class="terminal">
+        <div class="terminal-header">
+          <div class="terminal-dot red"></div>
+          <div class="terminal-dot yellow"></div>
+          <div class="terminal-dot green"></div>
+          <div class="terminal-title">AI Coding Agent — AGENTS.md</div>
+        </div>
+        <div class="terminal-body" id="terminal"></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Install with <code>pip install egokit</code> · MIT License
+    </footer>
+  </div>
+  <script>
+// Command outputs - abbreviated for prototype
+const commands = {
+  'ego-rules': `<span class="command">/ego-rules</span>
+
+<span class="heading">Active Policy Rules</span>
+
+<span class="error">●</span> <span class="rule-id">WORK-001</span>  No premature implementation
+<span class="error">●</span> <span class="rule-id">SEC-001</span>   Never commit credentials or secrets
+<span class="warning">●</span> <span class="rule-id">QUAL-001</span>  Gold standard type hinting
+<span class="warning">●</span> <span class="rule-id">QUAL-002</span>  PEP-8 compliance
+<span class="info">●</span> <span class="rule-id">TOOL-001</span>  Use ripgrep instead of grep
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="dim">Policy Charter v1.0.0 • 5 rules • 2 critical, 2 required, 1 recommended</span>`,
+
+  'ego-validate': `<span class="command">/ego-validate src/api/auth.py</span>
+
+<span class="heading">Validating Against Policies</span>
+
+<span class="success">✓</span> QUAL-001  Type hints present
+<span class="success">✓</span> QUAL-002  PEP-8 compliant
+<span class="warning">⚠</span> SEC-001   Hardcoded value on line 42
+<span class="success">✓</span> DOCS-003  No superlatives found
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="warning">1 issue</span> <span class="dim">•</span> <span class="success">3 passed</span>`,
+
+  'ego-review': `<span class="command">/ego-review</span>
+
+<span class="heading">Pre-Commit Review</span>
+
+<span class="dim">Staged changes:</span>
+  <span class="warning">M</span> src/api/auth.py
+  <span class="success">A</span> src/utils/helpers.py
+
+<span class="success">✓</span> Type hints complete
+<span class="success">✓</span> No secrets detected
+<span class="success">✓</span> Conventional commit ready
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="success">Ready to commit</span>`,
+
+  'ego-security': `<span class="command">/ego-security</span>
+
+<span class="heading">Security Review</span>
+
+Analyzing staged changes for security issues...
+
+<span class="success">✓</span> No hardcoded credentials
+<span class="success">✓</span> No SQL injection patterns
+<span class="warning">⚠</span> Input validation missing on line 28
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="warning">1 issue to review</span>`,
+
+  'ego-persona': `<span class="command">/ego-persona writer</span>
+
+<span class="heading">Switched to writer persona.</span>
+
+Now prioritizing:
+  <span class="info">●</span> Clarity and readability for target audience
+  <span class="info">●</span> Structured information architecture
+  <span class="info">●</span> Consistent terminology and style
+
+<span class="dim">Available:</span> developer, <span class="success">writer</span>, reviewer, architect
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="dim">Persona persists until changed</span>`,
+
+  'ego-suggest': `<span class="command">/ego-suggest</span>
+
+<span class="heading">Suggested Rules</span>
+
+Based on codebase patterns:
+
+<span class="info">1.</span> <span class="rule-id">API-001</span>  Consistent error response format
+   <span class="dim">Found 3 different structures in src/api/</span>
+
+<span class="info">2.</span> <span class="rule-id">TEST-001</span> Mock external services in tests
+   <span class="dim">Found 5 tests making real HTTP calls</span>
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="dim">Add to charter.yaml then run</span> <span class="command">ego apply</span>`,
+
+  'ego-refresh': `<span class="command">/ego-refresh</span>
+
+<span class="heading">Refreshing Policy Context</span>
+
+<span class="success">✓</span> Loaded AGENTS.md
+<span class="success">✓</span> Charter v1.0.0
+<span class="success">✓</span> 8 rules active
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="success">Context refreshed</span>`,
+
+  'ego-stats': `<span class="command">/ego-stats</span>
+
+<span class="heading">Policy Compliance Stats</span>
+
+Scanned <span class="info">127 commits</span> from the last 30 days.
+
+<span class="rule-id">SEC-001</span>: <span class="success">No violations</span>
+<span class="rule-id">QUAL-001</span>: <span class="warning">2 violations</span>
+<span class="rule-id">DOCS-003</span>: <span class="warning">4 violations</span>
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="dim">Compliance improving • Violations down 40%</span>`,
+
+  'ego-checkpoint': `<span class="command">/ego-checkpoint</span>
+
+<span class="heading">Checkpoint Created</span>
+
+<span class="success">✓</span> Snapshot: <span class="info">checkpoint-2025-11-27</span>
+
+<span class="dim">State:</span>
+  Files analyzed    <span class="info">47</span>
+  Violations found  <span class="warning">2</span>
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="dim">Compare after making changes</span>`
+};
+
+const commandsEl = document.getElementById('commands');
+const terminalEl = document.getElementById('terminal');
+
+function showCommand(cmd) {
+  if (commands[cmd]) {
+    document.querySelectorAll('.commands button').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-cmd="${cmd}"]`)?.classList.add('active');
+    terminalEl.innerHTML = commands[cmd];
+  }
+}
+
+Object.keys(commands).forEach((cmd, i) => {
+  const btn = document.createElement('button');
+  btn.textContent = '/' + cmd;
+  btn.dataset.cmd = cmd;
+  btn.onclick = () => showCommand(cmd);
+  commandsEl.appendChild(btn);
+  if (i === 0) btn.click();
+});
+  </script>
+</body>
+</html>
+
