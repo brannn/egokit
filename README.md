@@ -112,7 +112,7 @@ EgoKit generates eight slash commands in both `.claude/commands/` and `.augment/
 | `/ego-rules` | Display active policy rules and their severity levels |
 | `/ego-checkpoint` | Capture compliance state before making changes |
 | `/ego-review` | Run pre-commit review checklist |
-| `/ego-security` | Activate security-focused analysis mode |
+| `/ego-security` | Security-focused review of specified file or staged changes |
 | `/ego-refresh` | Re-read AGENTS.md to prevent policy drift |
 | `/ego-stats` | Analyze historical violation patterns |
 | `/ego-suggest` | Propose new rules based on codebase patterns |

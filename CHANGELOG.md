@@ -5,6 +5,14 @@ All notable changes to EgoKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-11-27
+
+### Changed
+- `/ego-security` command now scopes analysis to specified file or staged changes only
+- Reduced security checklist from 6 dimensions to 3 high-priority items
+- Added 60-second execution target to improve response time
+- Updated USER_GUIDE.md and README.md with revised command description
+
 ## [1.0.0] - 2025-11-26
 
 Major architectural refactor: EgoKit is now a stateless compiler that generates

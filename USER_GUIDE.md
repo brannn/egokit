@@ -302,7 +302,7 @@ Runs a pre-commit review checklist. Use this before finalizing changes to ensure
 
 ### /ego-security
 
-Activates security-focused analysis mode. The AI agent prioritizes security considerations in subsequent responses.
+Activates security-focused analysis mode. By default, analyzes only the specified file or staged changes to keep execution fast. Provide a file path for targeted review, or run without arguments to review staged changes.
 
 ### /ego-refresh
 
