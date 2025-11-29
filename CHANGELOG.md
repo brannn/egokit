@@ -5,6 +5,23 @@ All notable changes to EgoKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-29
+
+### Added
+- **Session Protocol**: New `session:` block in charter.yaml for context continuity across AI agent sessions
+- `SessionConfig`, `SessionStartup`, `SessionShutdown`, and `ContextFile` models for session configuration
+- Session Protocol section in AGENTS.md output (opt-in, only when `session:` block is present)
+- `/ego-refresh` now includes session startup checklist when session protocol is configured
+- `/ego-checkpoint` now includes session handoff mode with progress file template
+- Hint in `/ego-refresh` when session protocol is not configured (discoverability)
+- Commented-out `session:` block example in default charter.yaml from `ego init`
+- "Modifying Policies" section in AGENTS.md pointing to charter.yaml for AI agent discoverability
+- Self-documenting comments in charter.yaml template (schema reference, severity levels, scopes)
+
+### Changed
+- `PolicyCharter` model now accepts optional `session` field
+- `/ego-checkpoint` description updated to "Pre-change compliance snapshot or session handoff"
+
 ## [1.0.2] - 2025-11-27
 
 ### Added
@@ -77,6 +94,9 @@ AGENTS.md files and slash commands for AI coding tools.
 - CLI commands: init, apply, validate, doctor
 - Policy charter and ego configuration schemas
 
+[1.1.0]: https://github.com/brannn/egokit/compare/v1.0.2...v1.1.0
+[1.0.2]: https://github.com/brannn/egokit/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/brannn/egokit/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/brannn/egokit/compare/v0.3.14...v1.0.0
 [0.3.0]: https://github.com/brannn/egokit/compare/v0.1.0...v0.3.0
 [0.1.0]: https://github.com/brannn/egokit/releases/tag/v0.1.0

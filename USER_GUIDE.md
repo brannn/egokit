@@ -10,6 +10,7 @@ This guide provides comprehensive documentation for configuring and using EgoKit
 - [Writing Ego Configurations](#writing-ego-configurations)
 - [Running ego apply](#running-ego-apply)
 - [Customizing AGENTS.md](#customizing-agentsmd)
+- [Session Protocol](#session-protocol)
 - [Slash Command Reference](#slash-command-reference)
 - [Troubleshooting](#troubleshooting)
 
@@ -280,6 +281,94 @@ For new projects without an existing AGENTS.md, EgoKit generates a complete temp
 ### Existing Projects
 
 If AGENTS.md exists without markers, EgoKit prompts before appending the managed section. Use `--force` to append without confirmation.
+
+## Session Protocol
+
+EgoKit supports session continuity protocols for maintaining context across AI agent sessions. This feature is opt-in and activated by adding a `session:` block to your charter.yaml.
+
+### Why Session Protocols?
+
+AI coding agents operate within context windows that eventually fill up or reset. Without explicit handoff protocols, work context is lost between sessions. Session protocols define what the agent should do when starting and ending work sessions to maintain continuity.
+
+### Enabling Session Protocols
+
+Add a `session:` block to your charter.yaml:
+
+```yaml
+version: 1.0.0
+scopes:
+  global:
+    # ... your policy rules ...
+
+session:
+  startup:
+    read: ["PROGRESS.md"]
+    run: ["git status", "git log --oneline -5"]
+  shutdown:
+    update: ["PROGRESS.md"]
+    commit: false
+  progress_file: "PROGRESS.md"
+```
+
+### Configuration Options
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| `startup.read` | Files to read for context at session start | `["PROGRESS.md"]` |
+| `startup.run` | Commands to run for orientation | `["git status", "git log --oneline -5"]` |
+| `shutdown.update` | Files to update before ending session | `["PROGRESS.md"]` |
+| `shutdown.commit` | Whether to require committing changes | `false` |
+| `progress_file` | Primary progress file path | `"PROGRESS.md"` |
+| `context_files` | Explicit file configurations with modes | `[]` |
+
+### Context File Modes
+
+For projects that use multiple context files, you can specify update modes:
+
+```yaml
+session:
+  context_files:
+    - path: "PROGRESS.md"
+      mode: append    # Add new entries (session log pattern)
+    - path: "STATUS.md"
+      mode: replace   # Update in place (current state pattern)
+```
+
+The `append` mode is for files like PROGRESS.md that accumulate session entries. The `replace` mode is for files like STATUS.md that represent current state.
+
+### Generated Output
+
+When session protocols are enabled, EgoKit generates:
+
+1. **Session Protocol section in AGENTS.md** with startup and shutdown checklists
+2. **Enhanced /ego-refresh** that includes session startup instructions
+3. **Enhanced /ego-checkpoint** that includes session handoff mode with progress file template
+
+### Progress File Template
+
+The `/ego-checkpoint --handoff` command provides this template for updating progress files:
+
+```markdown
+## Session: YYYY-MM-DD
+
+### Completed
+- [What was accomplished this session]
+
+### Next Steps
+- [What remains to be done]
+- [Priority order if applicable]
+
+### Blockers
+- [Any issues encountered]
+- [Questions that need answers]
+
+### Files Modified
+- [List of files changed]
+```
+
+### Discoverability
+
+If you haven't enabled session protocols, the `/ego-refresh` command includes a hint about the feature. The default charter.yaml from `ego init` also includes a commented-out session block as an example.
 
 ## Slash Command Reference
 
