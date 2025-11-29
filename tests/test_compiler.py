@@ -18,6 +18,9 @@ from egokit.models import (
     EgoConfig,
     ModeConfig,
     PolicyCharter,
+    SessionConfig,
+    SessionShutdown,
+    SessionStartup,
     Severity,
     ToneConfig,
 )
@@ -979,3 +982,166 @@ class TestSetupCommandsFromMetadata:
         assert "## Setup Commands" in agents_md
         assert "See project README" in agents_md
         assert "See project test configuration" in agents_md
+
+
+class TestSessionProtocol:
+    """Test session protocol compilation in AGENTS.md and slash commands."""
+
+    @pytest.fixture
+    def context_with_session(self) -> CompilationContext:
+        """Create a compilation context with session protocol enabled."""
+        charter = PolicyCharter(
+            version="1.1.0",
+            scopes={
+                "global": {
+                    "security": [
+                        {
+                            "id": "SEC-001",
+                            "rule": "Never commit secrets",
+                            "severity": "critical",
+                            "tags": ["security"],
+                        },
+                    ],
+                },
+            },
+            session=SessionConfig(
+                startup=SessionStartup(
+                    read=["PROGRESS.md", "STATUS.md"],
+                    run=["git status", "git log --oneline -5"],
+                ),
+                shutdown=SessionShutdown(
+                    update=["PROGRESS.md"],
+                    commit=True,
+                ),
+                progress_file="PROGRESS.md",
+            ),
+        )
+
+        ego_config = EgoConfig(
+            role="Senior Engineer",
+            tone=ToneConfig(voice="professional", verbosity="balanced"),
+        )
+
+        return CompilationContext(
+            target_repo=Path("/test/repo"),
+            policy_charter=charter,
+            ego_config=ego_config,
+            active_scope="global",
+        )
+
+    @pytest.fixture
+    def context_without_session(self) -> CompilationContext:
+        """Create a compilation context without session protocol."""
+        charter = PolicyCharter(
+            version="1.0.0",
+            scopes={
+                "global": {
+                    "security": [
+                        {
+                            "id": "SEC-001",
+                            "rule": "Never commit secrets",
+                            "severity": "critical",
+                            "tags": ["security"],
+                        },
+                    ],
+                },
+            },
+        )
+
+        ego_config = EgoConfig(
+            role="Senior Engineer",
+            tone=ToneConfig(voice="professional", verbosity="balanced"),
+        )
+
+        return CompilationContext(
+            target_repo=Path("/test/repo"),
+            policy_charter=charter,
+            ego_config=ego_config,
+            active_scope="global",
+        )
+
+    def test_session_protocol_section_in_agents_md(
+        self, context_with_session: CompilationContext,
+    ) -> None:
+        """Test that session protocol section is included when configured."""
+        compiler = ArtifactCompiler(context_with_session)
+        section = compiler.compile_egokit_section()
+
+        assert "## Session Protocol" in section
+        assert "### Starting a Session" in section
+        assert "### Ending a Session" in section
+        assert "PROGRESS.md" in section
+        assert "STATUS.md" in section
+
+    def test_session_protocol_not_in_agents_md_when_disabled(
+        self, context_without_session: CompilationContext,
+    ) -> None:
+        """Test that session protocol section is not included when not configured."""
+        compiler = ArtifactCompiler(context_without_session)
+        section = compiler.compile_egokit_section()
+
+        assert "## Session Protocol" not in section
+
+    def test_session_startup_commands_in_section(
+        self, context_with_session: CompilationContext,
+    ) -> None:
+        """Test that startup commands are included in session protocol."""
+        compiler = ArtifactCompiler(context_with_session)
+        section = compiler.compile_egokit_section()
+
+        assert "git status" in section
+        assert "git log --oneline -5" in section
+
+    def test_session_shutdown_commit_requirement(
+        self, context_with_session: CompilationContext,
+    ) -> None:
+        """Test that commit requirement is shown when enabled."""
+        compiler = ArtifactCompiler(context_with_session)
+        section = compiler.compile_egokit_section()
+
+        assert "Commit all changes" in section
+
+    def test_ego_refresh_includes_session_startup(
+        self, context_with_session: CompilationContext,
+    ) -> None:
+        """Test that /ego-refresh includes session startup when configured."""
+        compiler = ArtifactCompiler(context_with_session)
+        commands = compiler.compile_slash_commands()
+
+        refresh_cmd = commands["ego-refresh.md"]
+        assert "Session Startup" in refresh_cmd
+        assert "PROGRESS.md" in refresh_cmd
+        assert "STATUS.md" in refresh_cmd
+
+    def test_ego_refresh_hint_when_no_session(
+        self, context_without_session: CompilationContext,
+    ) -> None:
+        """Test that /ego-refresh shows hint when session not configured."""
+        compiler = ArtifactCompiler(context_without_session)
+        commands = compiler.compile_slash_commands()
+
+        refresh_cmd = commands["ego-refresh.md"]
+        assert "session:" in refresh_cmd
+        assert "charter.yaml" in refresh_cmd
+
+    def test_ego_checkpoint_includes_handoff(
+        self, context_with_session: CompilationContext,
+    ) -> None:
+        """Test that /ego-checkpoint includes handoff mode when configured."""
+        compiler = ArtifactCompiler(context_with_session)
+        commands = compiler.compile_slash_commands()
+
+        checkpoint_cmd = commands["ego-checkpoint.md"]
+        assert "Session Handoff" in checkpoint_cmd
+        assert "Progress File Template" in checkpoint_cmd
+        assert "PROGRESS.md" in checkpoint_cmd
+
+    def test_ego_checkpoint_no_handoff_when_no_session(
+        self, context_without_session: CompilationContext,
+    ) -> None:
+        """Test that /ego-checkpoint has no handoff when session not configured."""
+        compiler = ArtifactCompiler(context_without_session)
+        commands = compiler.compile_slash_commands()
+
+        checkpoint_cmd = commands["ego-checkpoint.md"]
+        assert "Session Handoff" not in checkpoint_cmd

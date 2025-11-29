@@ -135,6 +135,10 @@ class PolicyCharter(BaseModel):
         default_factory=dict,
         description="Additional charter metadata",
     )
+    session: SessionConfig | None = Field(
+        default=None,
+        description="Session continuity protocol configuration (opt-in)",
+    )
 
     @field_validator("version")
     @classmethod
@@ -162,6 +166,75 @@ class EgoCharter(BaseModel):
             msg = "Version must follow semantic versioning (e.g., 1.0.0)"
             raise ValueError(msg)
         return v
+
+
+class ContextFileMode(str, Enum):
+    """Mode for updating context files during session handoff."""
+
+    APPEND = "append"   # Add new entries (like PROGRESS.md session log)
+    REPLACE = "replace"  # Update in place (like STATUS.md current state)
+
+
+class ContextFile(BaseModel):
+    """Configuration for a session context file."""
+
+    path: str = Field(..., description="Path to the context file relative to repo root")
+    mode: ContextFileMode = Field(
+        default=ContextFileMode.APPEND,
+        description="How the file should be updated",
+    )
+
+
+class SessionStartup(BaseModel):
+    """Configuration for session startup protocol."""
+
+    read: list[str] = Field(
+        default_factory=lambda: ["PROGRESS.md"],
+        description="Files to read for context at session start",
+    )
+    run: list[str] = Field(
+        default_factory=lambda: ["git status", "git log --oneline -5"],
+        description="Commands to run for orientation",
+    )
+
+
+class SessionShutdown(BaseModel):
+    """Configuration for session shutdown protocol."""
+
+    update: list[str] = Field(
+        default_factory=lambda: ["PROGRESS.md"],
+        description="Files to update before ending session",
+    )
+    commit: bool = Field(
+        default=False,
+        description="Whether to require committing changes before session end",
+    )
+
+
+class SessionConfig(BaseModel):
+    """Session continuity protocol configuration.
+
+    This defines how AI agents should handle session boundaries to maintain
+    context across context windows. EgoKit compiles these into instructions;
+    the agent executes them.
+    """
+
+    startup: SessionStartup = Field(
+        default_factory=SessionStartup,
+        description="What to do when starting a session",
+    )
+    shutdown: SessionShutdown = Field(
+        default_factory=SessionShutdown,
+        description="What to do when ending a session",
+    )
+    context_files: list[ContextFile] = Field(
+        default_factory=list,
+        description="Explicit context file configurations with modes",
+    )
+    progress_file: str = Field(
+        default="PROGRESS.md",
+        description="Primary progress file path",
+    )
 
 
 class ArtifactConfig(BaseModel):

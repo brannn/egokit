@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .models import CompilationContext, PolicyRule, ScopeRules, Severity
+from .models import (
+    CompilationContext,
+    PolicyRule,
+    ScopeRules,
+    SessionConfig,
+    Severity,
+)
 
 # Markers for the EgoKit-managed section in AGENTS.md
 # Content between these markers is auto-generated; content outside is human-managed
@@ -101,8 +107,16 @@ class ArtifactCompiler:
         if security_rules:
             sections.extend(self._compile_agents_security(security_rules))
 
+        # Session Protocol (opt-in)
+        session = self.context.policy_charter.session
+        if session is not None:
+            sections.extend(self._compile_agents_session_protocol(session))
+
         # EgoKit Commands Reference
         sections.extend(self._compile_agents_commands_reference())
+
+        # EgoKit Configuration Pointer
+        sections.extend(self._compile_agents_configuration_pointer())
 
         # Closing marker
         sections.append(EGOKIT_END_MARKER)
@@ -409,6 +423,93 @@ class ArtifactCompiler:
         sections.append("")
         return sections
 
+    def _compile_agents_session_protocol(self, session: SessionConfig) -> list[str]:
+        """Generate Session Protocol section for AGENTS.md.
+
+        This section is only included when session: block is present in charter.yaml.
+        It provides instructions for maintaining context across context windows.
+        """
+        sections = [
+            "## Session Protocol",
+            "",
+            "These protocols ensure continuity across context windows.",
+            "",
+            "### Starting a Session",
+            "",
+            "Before beginning new work:",
+            "",
+        ]
+
+        # Startup: Read context files
+        if session.startup.read:
+            sections.append("1. **Read context files** (in order):")
+            for file_path in session.startup.read:
+                sections.append(f"   - `{file_path}`")
+            sections.append("")
+
+        # Startup: Run orientation commands
+        if session.startup.run:
+            sections.append("2. **Check repository state**:")
+            sections.append("   ```bash")
+            for cmd in session.startup.run:
+                sections.append(f"   {cmd}")
+            sections.append("   ```")
+            sections.append("")
+
+        sections.extend([
+            "3. **Verify clean handoff**:",
+            "   - No uncommitted changes from previous session",
+            "   - Progress file updated within reasonable timeframe",
+            "",
+            "### Ending a Session",
+            "",
+            "Before ending work or when context window is filling:",
+            "",
+        ])
+
+        # Shutdown: Commit requirement
+        step = 1
+        if session.shutdown.commit:
+            sections.append(
+                f"{step}. **Commit all changes** with descriptive message "
+                "following commit conventions",
+            )
+            sections.append("")
+            step += 1
+
+        # Shutdown: Update progress files
+        if session.shutdown.update:
+            progress_file = session.shutdown.update[0] if session.shutdown.update else "PROGRESS.md"
+            sections.append(f"{step}. **Update progress file** (`{progress_file}`):")
+            sections.extend([
+                "   ```markdown",
+                "   ## Session: YYYY-MM-DD",
+                "   ",
+                "   ### Completed",
+                "   - [What was accomplished]",
+                "   ",
+                "   ### Next Steps",
+                "   - [What remains to be done]",
+                "   ",
+                "   ### Blockers",
+                "   - [Any issues encountered]",
+                "   ",
+                "   ### Files Modified",
+                "   - [List of changed files]",
+                "   ```",
+                "",
+            ])
+            step += 1
+
+        sections.extend([
+            f"{step}. **Verify clean state**:",
+            "   - All tests pass",
+            "   - No unfinished TODOs in modified code",
+            "",
+        ])
+
+        return sections
+
     def _compile_agents_commands_reference(self) -> list[str]:
         """Generate EgoKit Commands reference section for AGENTS.md."""
         return [
@@ -425,6 +526,24 @@ class ArtifactCompiler:
             "- `/ego-security` — Activate security-focused mode",
             "- `/ego-refresh` — Re-read policy context",
             "- `/ego-persona` — Switch working persona (developer, writer, reviewer, architect)",
+            "",
+        ]
+
+    def _compile_agents_configuration_pointer(self) -> list[str]:
+        """Generate configuration pointer section for AGENTS.md.
+
+        This helps AI agents understand how to modify EgoKit policies
+        when users ask to add or change rules.
+        """
+        # Get registry path relative info if available
+        registry_hint = ".egokit/policy-registry/"
+
+        return [
+            "## Modifying Policies",
+            "",
+            f"To add or change policies, edit `{registry_hint}charter.yaml` "
+            "and run `ego apply`.",
+            "The charter file contains schema documentation in its comments.",
             "",
             "---",
             "",
@@ -669,24 +788,31 @@ Group suggestions by category (style, security, documentation, etc.)
 """
 
     def _generate_ego_checkpoint_command(self) -> str:
-        """Generate /ego-checkpoint command as pure AI prompt."""
-        return """---
-description: Pre-change compliance snapshot
-argument-hint: [task-description]
+        """Generate /ego-checkpoint command as pure AI prompt.
+
+        If session protocol is configured, includes session handoff template.
+        """
+        session = self.context.policy_charter.session
+
+        base_command = """---
+description: Pre-change compliance snapshot or session handoff
+argument-hint: [task-description | --handoff]
 ---
 
-# Pre-Change Compliance Checkpoint
+# Checkpoint
 
-Document current state and identify policies that apply to planned changes.
+Create a compliance snapshot before changes, or prepare a session handoff.
 
-## Instructions
+## Mode: Pre-Change Checkpoint
+
+If preparing for code changes:
 
 1. Read AGENTS.md to understand active policies
 2. Analyze the current state of files you plan to modify
 3. Identify which policy rules apply to your planned changes
 4. Create a checklist of compliance requirements
 
-## Output Format
+### Pre-Change Output Format
 
 ```
 ## Checkpoint: [timestamp]
@@ -706,9 +832,55 @@ Document current state and identify policies that apply to planned changes.
 ### Notes
 Any special considerations or risks
 ```
-
-Use this checkpoint to validate your changes before committing.
 """
+
+        if session is not None:
+            progress_file = session.progress_file or "PROGRESS.md"
+            handoff_section = f"""
+## Mode: Session Handoff
+
+If ending a session or context window is filling (use `--handoff`):
+
+1. Commit all pending changes with descriptive message
+2. Update `{progress_file}` with session summary
+3. Verify clean handoff state
+
+### Session Handoff Checklist
+
+- [ ] All changes committed
+- [ ] Progress file updated
+- [ ] All tests pass
+- [ ] No unfinished TODOs in modified files
+
+### Progress File Template
+
+Use this template when updating `{progress_file}`:
+
+```markdown
+## Session: [DATE]
+
+### Completed
+- [What was accomplished this session]
+
+### Next Steps
+- [What remains to be done]
+- [Priority order if applicable]
+
+### Blockers
+- [Any issues encountered]
+- [Questions that need answers]
+
+### Files Modified
+- [List of files changed]
+```
+"""
+            base_command += handoff_section
+
+        base_command += """
+Use checkpoints to maintain continuity and validate your work.
+"""
+
+        return base_command
 
     def _generate_ego_review_command(self) -> str:
         """Generate /ego-review command as pure AI prompt."""
@@ -801,8 +973,14 @@ Analyze code with heightened security awareness.
 """
 
     def _generate_ego_refresh_command(self) -> str:
-        """Generate /ego-refresh command as pure AI prompt."""
-        return """---
+        """Generate /ego-refresh command as pure AI prompt.
+
+        If session protocol is configured, includes session startup checklist.
+        If not configured, includes a hint about the feature.
+        """
+        session = self.context.policy_charter.session
+
+        base_command = """---
 description: Re-read and internalize policy context
 ---
 
@@ -818,6 +996,39 @@ Re-read AGENTS.md to ensure current policy awareness.
    - Critical rules that must never be violated
    - Required practices for code quality
    - Security considerations
+"""
+
+        if session is not None:
+            # Include session startup protocol
+            session_section = """
+## Session Startup
+
+If this is a new session or context window:
+
+"""
+            # Add files to read
+            if session.startup.read:
+                session_section += "**Read context files:**\n"
+                for file_path in session.startup.read:
+                    session_section += f"- `{file_path}`\n"
+                session_section += "\n"
+
+            # Add commands to run
+            if session.startup.run:
+                session_section += "**Check repository state:**\n```bash\n"
+                for cmd in session.startup.run:
+                    session_section += f"{cmd}\n"
+                session_section += "```\n\n"
+
+            session_section += (
+                "**Verify:**\n"
+                "- No uncommitted changes from previous session\n"
+                "- Progress file is up to date\n"
+            )
+
+            base_command += session_section
+
+        base_command += """
 4. Acknowledge the refresh with a brief summary
 
 ## Output Format
@@ -836,12 +1047,29 @@ Re-read AGENTS.md to ensure current policy awareness.
 ### Security Focus Areas
 - [area 1]
 - [area 2]
+"""
 
-✅ Policies refreshed and internalized.
+        if session is not None:
+            base_command += """
+### Session Status
+- Progress file: [status]
+- Uncommitted changes: [yes/no]
+"""
+
+        base_command += """
+Policies refreshed and internalized.
 ```
 
 Run this command periodically during long sessions to prevent policy drift.
 """
+
+        if session is None:
+            base_command += """
+---
+**Tip:** Add a `session:` block to charter.yaml for session continuity protocols.
+"""
+
+        return base_command
 
     def _generate_ego_persona_command(self) -> str:
         """Generate /ego-persona command as pure AI prompt."""

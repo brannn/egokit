@@ -120,6 +120,24 @@ EgoKit generates eight slash commands in both `.claude/commands/` and `.augment/
 
 These commands are pure AI prompts that reference AGENTS.md. They contain no CLI invocations and work identically across Claude Code and Augment.
 
+### Session Protocol (Optional)
+
+EgoKit supports session continuity protocols for maintaining context across AI agent sessions. Add a `session:` block to your charter.yaml to enable:
+
+```yaml
+session:
+  startup:
+    read: ["PROGRESS.md"]
+    run: ["git status", "git log --oneline -5"]
+  shutdown:
+    update: ["PROGRESS.md"]
+    commit: false
+```
+
+When enabled, EgoKit generates a Session Protocol section in AGENTS.md with startup and shutdown checklists. The `/ego-refresh` and `/ego-checkpoint` commands also include session-specific instructions.
+
+See the [User Guide](USER_GUIDE.md) for detailed session protocol configuration.
+
 ## Further Reading
 
 - [User Guide](USER_GUIDE.md) - Comprehensive usage examples and configuration reference

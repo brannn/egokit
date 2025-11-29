@@ -148,6 +148,29 @@ def init(
 
         # Create starter charter.yaml
         charter_content = f"""\
+# EgoKit Policy Charter
+# =====================
+# This file defines policies that AI coding agents enforce.
+# Run `ego apply` after changes to regenerate AGENTS.md and slash commands.
+#
+# RULE SCHEMA:
+#   - id: "UNIQUE-ID"              # Required (e.g., SEC-001, QUAL-002)
+#     rule: "What to enforce"      # Required
+#     severity: critical           # critical | warning | info
+#     tags: ["tag1", "tag2"]       # Optional, for filtering
+#     rationale: "Why"             # Optional, explains the rule
+#     example_violation: "bad"     # Optional, shows what NOT to do
+#     example_fix: "good"          # Optional, shows correct approach
+#
+# SEVERITY LEVELS:
+#   critical  -> "Must Follow" (blocks contributions)
+#   warning   -> "Should Follow" (code quality)
+#   info      -> "Recommended" (best practices)
+#
+# SCOPES: global < team < project < user < session (later overrides earlier)
+#
+# DOCUMENTATION: See USER_GUIDE.md for full schema reference.
+
 version: 1.0.0
 scopes:
   global:
@@ -175,6 +198,17 @@ scopes:
 metadata:
   description: "{org_name} policy charter"
   maintainer: "{org_name} Engineering Team"
+
+# SESSION PROTOCOL (optional):
+# Uncomment to enable context continuity across AI agent sessions.
+# session:
+#   startup:
+#     read: ["PROGRESS.md"]
+#     run: ["git status", "git log --oneline -5"]
+#   shutdown:
+#     update: ["PROGRESS.md"]
+#     commit: false
+#   progress_file: "PROGRESS.md"
 """
 
         (registry_path / "charter.yaml").write_text(charter_content, encoding="utf-8")
