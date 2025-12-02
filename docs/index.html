@@ -310,7 +310,31 @@ Scanning <span class="info">4 sessions</span> from the last 5 days...
 <span class="info">●</span> Requests code examples first
 
 <span class="separator">────────────────────────────────────────────────────────────────</span>
-<span class="dim">Run with</span> <span class="command">--suggest</span> <span class="dim">to generate charter.yaml rules</span>`
+<span class="dim">Run with</span> <span class="command">--suggest</span> <span class="dim">to generate charter.yaml rules</span>`,
+
+  'ego-imprint --suggest': `<span class="command">/ego-imprint 5 --suggest</span>
+
+<span class="heading">Session Pattern Analysis</span>
+
+Scanning <span class="info">4 sessions</span> from the last 5 days...
+Found <span class="info">2 corrections</span>, <span class="info">2 style preferences</span>
+
+<span class="heading">Suggested Rules</span>
+
+<span class="muted"># From: "No, use uv instead of pip"</span>
+<span class="rule-id">- id:</span> TOOL-002
+  <span class="rule-id">description:</span> Use uv instead of pip for package management
+  <span class="rule-id">severity:</span> warning
+  <span class="rule-id">scope:</span> global
+
+<span class="muted"># From: "Actually, prefer pathlib over os.path"</span>
+<span class="rule-id">- id:</span> STYLE-001
+  <span class="rule-id">description:</span> Prefer pathlib over os.path for path operations
+  <span class="rule-id">severity:</span> info
+  <span class="rule-id">scope:</span> global
+
+<span class="separator">────────────────────────────────────────────────────────────────</span>
+<span class="dim">Add these to</span> <span class="command">charter.yaml</span> <span class="dim">then run</span> <span class="command">ego apply</span>`
 };
 
 const commandsEl = document.getElementById('commands');
