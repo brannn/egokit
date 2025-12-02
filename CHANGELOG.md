@@ -5,6 +5,21 @@ All notable changes to EgoKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-02
+
+### Added
+- **Imprint Command**: New `ego imprint` command for analyzing AI session logs to detect correction patterns
+- `imprint/` module with parsers for Claude Code JSONL and Augment JSON session exports
+- `PatternDetector` for regex-based detection of explicit corrections, style preferences, and implicit patterns
+- `PolicySuggester` for generating charter.yaml rule suggestions from detected patterns
+- CLI options: `--since`, `--claude-logs`, `--augment-logs`, `--suggest`, `--explain`, `--min-confidence`
+- `/ego-imprint` slash command for both Claude and Augment
+- Tests for imprint module (28 tests)
+- Documentation for Imprint in README, SYSTEM_ARCHITECTURE, and USER_GUIDE
+
+### Changed
+- Now generates 10 slash commands (added ego-imprint)
+
 ## [1.1.0] - 2025-11-29
 
 ### Added
@@ -94,6 +109,7 @@ AGENTS.md files and slash commands for AI coding tools.
 - CLI commands: init, apply, validate, doctor
 - Policy charter and ego configuration schemas
 
+[1.2.0]: https://github.com/brannn/egokit/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/brannn/egokit/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/brannn/egokit/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/brannn/egokit/compare/v1.0.0...v1.0.1
