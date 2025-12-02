@@ -61,7 +61,7 @@ The compiler produces two categories of artifacts:
 
 ## Module Overview
 
-EgoKit consists of four primary modules:
+EgoKit consists of five primary modules:
 
 ### cli.py
 
@@ -103,6 +103,26 @@ Key types:
 - PolicyCharter - The complete charter configuration
 - EgoConfig - AI behavior configuration
 - CompilationContext - All inputs needed for compilation
+
+### imprint/
+
+The imprint module analyzes AI session logs to detect correction patterns and generate policy suggestions. This module operates independently from the compilation pipeline, providing a feedback loop from actual usage back to policy definitions.
+
+The module contains four components:
+
+**models.py** defines data structures for session analysis: Message and Session represent parsed log entries, while CorrectionPattern, StylePreference, and ImplicitPattern represent detected patterns.
+
+**parsers.py** handles log format parsing. The ClaudeCodeParser processes JSONL files from Claude Code sessions stored in ~/.claude/projects/. The AugmentParser processes JSON exports from Augment sessions. Both parsers normalize logs into a common Session structure.
+
+**detector.py** implements pattern detection using regex-based heuristics. The PatternDetector scans user messages for correction indicators ("No, use X not Y", "Actually, I meant..."), style preferences ("be concise", "show code first"), and implicit patterns (frequently referenced policy IDs). Detection uses occurrence counting and confidence scoring rather than ML or embeddings.
+
+**suggester.py** transforms detected patterns into charter.yaml rule suggestions. The PolicySuggester maps patterns to the charter schema, generating YAML snippets with appropriate severity levels and rationale text.
+
+The data flow follows a three-phase pipeline:
+
+```
+Session Logs → Parsers → Sessions → Detector → Patterns → Suggester → YAML
+```
 
 ## Compilation Pipeline
 

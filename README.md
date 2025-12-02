@@ -104,7 +104,7 @@ The primary configuration file that AI coding tools read to understand your orga
 
 ### Slash Commands
 
-EgoKit generates eight slash commands in both `.claude/commands/` and `.augment/commands/` directories:
+EgoKit generates slash commands in both `.claude/commands/` and `.augment/commands/` directories:
 
 | Command | Purpose |
 |---------|---------|
@@ -117,6 +117,7 @@ EgoKit generates eight slash commands in both `.claude/commands/` and `.augment/
 | `/ego-stats` | Analyze historical violation patterns |
 | `/ego-suggest` | Propose new rules based on codebase patterns |
 | `/ego-persona` | Switch working persona (developer, writer, reviewer, architect) |
+| `/ego-imprint` | Analyze session history for correction patterns |
 
 These commands are pure AI prompts that reference AGENTS.md. They contain no CLI invocations and work identically across Claude Code and Augment.
 
@@ -137,6 +138,16 @@ session:
 When enabled, EgoKit generates a Session Protocol section in AGENTS.md with startup and shutdown checklists. The `/ego-refresh` and `/ego-checkpoint` commands also include session-specific instructions.
 
 See the [User Guide](USER_GUIDE.md) for detailed session protocol configuration.
+
+### Learning from Corrections (Imprint)
+
+EgoKit can analyze your AI session history to detect patterns in your corrections. When you repeatedly tell an AI assistant "No, use X not Y" or "Actually, I prefer...", these corrections represent implicit policies. The `ego imprint` command scans session logs and suggests charter rules based on detected patterns.
+
+```bash
+ego imprint --since 30 --suggest
+```
+
+See the [User Guide](USER_GUIDE.md) for detailed imprint configuration and usage.
 
 ## Further Reading
 

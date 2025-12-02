@@ -152,6 +152,7 @@ ignore = [
     "D107",    # Missing docstring in __init__
     "B008",    # Function call in default argument (typer.Option pattern)
     "PLR0912", # Too many branches (CLI commands are naturally complex)
+    "PLR0913", # Too many arguments (CLI commands with Typer naturally have many options)
     "PLR0915", # Too many statements (CLI commands are naturally complex)
     "TC003",   # Move standard library import into type-checking block (Pydantic needs runtime access)
     "SIM108",  # Ternary operator suggestion - often less readable

@@ -12,6 +12,7 @@ This guide provides comprehensive documentation for configuring and using EgoKit
 - [Customizing AGENTS.md](#customizing-agentsmd)
 - [Session Protocol](#session-protocol)
 - [Slash Command Reference](#slash-command-reference)
+- [Learning from Corrections (Imprint)](#learning-from-corrections-imprint)
 - [Troubleshooting](#troubleshooting)
 
 ## Installation and Setup
@@ -416,6 +417,96 @@ Switches the AI agent to a distinct working persona. Available personas:
 - **architect**: System-level thinking with emphasis on trade-offs, boundaries, and long-term implications
 
 Use `/ego-persona writer` before documentation tasks, or `/ego-persona reviewer` when you want critical feedback without immediate fixes.
+
+### /ego-imprint
+
+Analyzes your session history to detect correction patterns and suggest policy rules. This command runs the `ego imprint` CLI tool to scan Claude Code and Augment session logs.
+
+## Learning from Corrections (Imprint)
+
+Over time, developers establish implicit preferences through repeated corrections to AI assistants. Phrases like "No, use snake_case not camelCase" or "Actually, always include type hints" represent policies that exist only in the developer's head. The Imprint feature detects these patterns and suggests explicit charter rules.
+
+### How Imprint Works
+
+The imprint command parses session logs from Claude Code and Augment, searching for correction patterns in your messages to the AI. It applies regex-based heuristics to identify three types of patterns:
+
+**Explicit Corrections** occur when you directly correct the AI's output. Phrases beginning with "No,", "Actually,", "Instead,", or "Use X not Y" indicate a preference the AI violated. Imprint extracts these corrections and categorizes them by topic (code style, security, documentation, etc.).
+
+**Style Preferences** are detected when you repeatedly request a particular style of interaction. Messages containing "be concise", "show code first", or "explain step by step" indicate communication preferences that could become ego configuration settings.
+
+**Implicit Patterns** emerge from frequency analysis. If you frequently reference a particular policy ID or repeatedly make similar requests, Imprint identifies these as candidates for explicit rules.
+
+### Running ego imprint
+
+The basic command scans recent sessions and displays detected patterns:
+
+```bash
+ego imprint --since 30
+```
+
+This analyzes sessions from the last 30 days. The output shows correction patterns with occurrence counts and confidence levels.
+
+To generate policy suggestions from detected patterns:
+
+```bash
+ego imprint --since 30 --suggest
+```
+
+For detailed evidence showing which messages triggered each pattern:
+
+```bash
+ego imprint --since 30 --suggest --explain
+```
+
+### Command Options
+
+| Option | Description |
+|--------|-------------|
+| `--since DAYS` | Analyze sessions from the last N days (default: 30) |
+| `--claude-logs PATH` | Path to Claude Code logs (default: ~/.claude/projects/) |
+| `--augment-logs PATH` | Path to Augment session exports |
+| `--suggest` | Generate policy suggestions from detected patterns |
+| `--explain` | Show detailed evidence for each pattern |
+| `--min-confidence LEVEL` | Filter by confidence level: low, medium, or high |
+
+### Understanding the Output
+
+The imprint command produces output in several sections:
+
+**Session Summary** shows how many sessions were analyzed and from which sources (Claude Code, Augment).
+
+**Correction Patterns** lists detected corrections with occurrence counts. Each pattern shows the original correction text, its category, and a confidence level based on how clearly it matches correction indicators.
+
+**Style Preferences** shows detected communication preferences with occurrence counts.
+
+**Suggested Rules** (when using `--suggest`) displays YAML snippets formatted for charter.yaml. Each suggestion includes the pattern that triggered it and an auto-generated rationale.
+
+### Adding Suggested Rules
+
+After reviewing suggestions, copy the YAML snippets into your charter.yaml file. Suggestions are formatted to match the charter schema:
+
+```yaml
+# Suggested rule from imprint:
+- id: STYLE-001
+  rule: "Use snake_case for all Python variable names"
+  severity: warning
+  rationale: "Detected from 5 corrections: 'No, use snake_case not camelCase'"
+  tags:
+    - code_style
+    - python
+```
+
+Review and edit suggestions before adding them. Imprint provides starting points, not final policies. Adjust the rule text, severity, and tags to match your organization's standards.
+
+You can use your AI coding assistant to help integrate suggestions into the policy registry. Share the imprint output with your assistant and ask it to review the suggestions, refine the rule text, assign appropriate severity levels, or merge similar patterns into consolidated rules. The assistant can also help identify conflicts with existing charter rules and suggest appropriate placement within the scope hierarchy. Since the assistant is already aware of the charter schema (from the registry's schemas/ directory), it can validate suggestions and ensure they conform to the expected structure.
+
+After adding rules, run `ego apply` to regenerate AGENTS.md with the new policies.
+
+### Log File Locations
+
+Claude Code stores session logs in `~/.claude/projects/` organized by project path. Each session is a JSONL file containing message history.
+
+Augment session exports are JSON files that you export manually from the Augment interface. Specify the directory containing these exports with `--augment-logs`.
 
 ## Troubleshooting
 
