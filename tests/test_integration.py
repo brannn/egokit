@@ -480,8 +480,8 @@ This world-class, incredible, revolutionary project is the best solution ever cr
         claude_command_files = list(claude_commands_dir.glob("ego-*.md"))
         augment_command_files = list(augment_commands_dir.glob("ego-*.md"))
 
-        assert len(claude_command_files) == 9, f"Expected 9 Claude commands, got {len(claude_command_files)}"
-        assert len(augment_command_files) == 9, f"Expected 9 Augment commands, got {len(augment_command_files)}"
+        assert len(claude_command_files) == 10, f"Expected 10 Claude commands, got {len(claude_command_files)}"
+        assert len(augment_command_files) == 10, f"Expected 10 Augment commands, got {len(augment_command_files)}"
 
         # Step 4: Verify ego-validate command is a pure AI prompt
         validate_cmd = (claude_commands_dir / "ego-validate.md").read_text()

@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import typer
@@ -20,6 +20,16 @@ except ImportError:
 
 from .compiler import ArtifactCompiler, find_egokit_section
 from .exceptions import EgoKitError
+from .imprint import (
+    AugmentParser,
+    ClaudeCodeParser,
+    DetectorConfig,
+    ImprintReport,
+    PatternDetector,
+    PolicySuggester,
+    SuggesterConfig,
+)
+from .imprint.models import PatternConfidence
 from .models import CompilationContext, Severity
 from .registry import PolicyRegistry
 
@@ -600,6 +610,207 @@ def _sync_projects(projects: list[Path], registry_path: Path) -> None:
 def version() -> None:
     """Show EgoKit version information."""
     console.print(f"EgoKit version {_get_version_string()}")
+
+
+@app.command()
+def imprint(
+    claude_logs: Path | None = typer.Option(
+        None,
+        "--claude-logs",
+        help="Path to Claude Code logs directory (defaults to ~/.claude/projects/)",
+    ),
+    augment_logs: Path | None = typer.Option(
+        None,
+        "--augment-logs",
+        help="Path to Augment session exports directory",
+    ),
+    since: int = typer.Option(
+        30,
+        "--since",
+        help="Analyze sessions from the last N days",
+    ),
+    suggest: bool = typer.Option(
+        False,
+        "--suggest",
+        help="Generate policy suggestions from detected patterns",
+    ),
+    explain: bool = typer.Option(
+        False,
+        "--explain",
+        help="Show detailed evidence for each pattern",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show analysis without generating suggestions",
+    ),
+    min_confidence: str = typer.Option(
+        "low",
+        "--min-confidence",
+        help="Minimum confidence level: low, medium, high",
+    ),
+) -> None:
+    """Analyze AI session history and surface correction patterns.
+
+    Imprint detects patterns in your corrections to AI coding assistants
+    and suggests policy refinements. Your corrections become your policies.
+
+    Examples:
+        ego imprint --since 30
+        ego imprint --suggest --explain
+        ego imprint --claude-logs ~/.claude/projects/myproject/
+    """
+    # Determine log paths
+    if claude_logs is None:
+        claude_logs = Path.home() / ".claude" / "projects"
+
+    # Parse confidence level
+    confidence_map = {
+        "low": PatternConfidence.LOW,
+        "medium": PatternConfidence.MEDIUM,
+        "high": PatternConfidence.HIGH,
+    }
+    min_conf = confidence_map.get(min_confidence.lower(), PatternConfidence.LOW)
+
+    console.print("[bold blue]📊 Imprint Analysis[/bold blue]")
+    console.print(f"   Analyzing sessions from the last {since} days\n")
+
+    # Parse sessions
+    sessions = []
+    claude_count = 0
+    augment_count = 0
+
+    # Parse Claude Code logs
+    if claude_logs and claude_logs.exists():
+        console.print(f"[dim]Scanning Claude Code logs: {claude_logs}[/dim]")
+        claude_parser = ClaudeCodeParser()
+        cutoff = datetime.now(tz=UTC) - timedelta(days=since)
+        for log_file in claude_parser.discover(claude_logs):
+            for session in claude_parser.parse(log_file):
+                if session.start_time and session.start_time >= cutoff:
+                    sessions.append(session)
+                    claude_count += 1
+
+    # Parse Augment logs
+    if augment_logs and augment_logs.exists():
+        console.print(f"[dim]Scanning Augment logs: {augment_logs}[/dim]")
+        augment_parser = AugmentParser()
+        cutoff = datetime.now(tz=UTC) - timedelta(days=since)
+        for log_file in augment_parser.discover(augment_logs):
+            for session in augment_parser.parse(log_file):
+                if session.start_time and session.start_time >= cutoff:
+                    sessions.append(session)
+                    augment_count += 1
+
+    if not sessions:
+        console.print("[yellow]No sessions found in the specified time range.[/yellow]")
+        console.print("\nTips:")
+        console.print("  • Check that log paths are correct")
+        console.print("  • Try increasing --since value")
+        console.print("  • Ensure you have AI session history")
+        raise typer.Exit(0)
+
+    console.print(f"   Found {len(sessions)} sessions ({claude_count} Claude, {augment_count} Augment)\n")
+
+    # Detect patterns
+    detector_config = DetectorConfig()
+    detector = PatternDetector(detector_config)
+    corrections, style_prefs, implicit = detector.detect_all(sessions)
+
+    # Build report
+    start_times = [s.start_time for s in sessions if s.start_time]
+    end_times = [s.end_time for s in sessions if s.end_time]
+
+    report = ImprintReport(
+        sessions_analyzed=len(sessions),
+        claude_sessions=claude_count,
+        augment_sessions=augment_count,
+        date_range_start=min(start_times) if start_times else None,
+        date_range_end=max(end_times) if end_times else None,
+        correction_patterns=corrections,
+        style_preferences=style_prefs,
+        implicit_patterns=implicit,
+    )
+
+    # Display results
+    if not report.has_patterns:
+        console.print("[green]No significant patterns detected.[/green]")
+        console.print("This could mean:")
+        console.print("  • Your AI assistant is already well-tuned")
+        console.print("  • Not enough correction data in the time range")
+        console.print("  • Try increasing --since to analyze more history")
+        raise typer.Exit(0)
+
+    # Show correction patterns
+    if corrections:
+        console.print("[bold]Correction Patterns:[/bold]")
+        for pattern in corrections:
+            conf_color = {"high": "green", "medium": "yellow", "low": "dim"}.get(
+                pattern.confidence.value, "dim",
+            )
+            console.print(
+                f"  [{conf_color}]{pattern.confidence.value.upper()}[/{conf_color}] "
+                f"{pattern.category}: {pattern.occurrences} occurrences",
+            )
+            if explain and pattern.evidence:
+                for ev in pattern.evidence[:2]:
+                    console.print(f'       [dim]→ "{ev[:80]}..."[/dim]')
+        console.print()
+
+    # Show style preferences
+    if style_prefs:
+        console.print("[bold]Style Preferences:[/bold]")
+        for pref in style_prefs:
+            conf_color = {"high": "green", "medium": "yellow", "low": "dim"}.get(
+                pref.confidence.value, "dim",
+            )
+            console.print(
+                f"  [{conf_color}]{pref.confidence.value.upper()}[/{conf_color}] "
+                f"{pref.preference}: {pref.occurrences} mentions",
+            )
+            if explain and pref.evidence:
+                for ev in pref.evidence[:2]:
+                    console.print(f'       [dim]→ "{ev[:80]}..."[/dim]')
+        console.print()
+
+    # Show implicit patterns
+    if implicit:
+        console.print("[bold]Implicit Patterns:[/bold]")
+        for impl_pattern in implicit:
+            conf_color = {"high": "green", "medium": "yellow", "low": "dim"}.get(
+                impl_pattern.confidence.value, "dim",
+            )
+            console.print(
+                f"  [{conf_color}]{impl_pattern.confidence.value.upper()}[/{conf_color}] "
+                f"{impl_pattern.description}",
+            )
+        console.print()
+
+    # Generate suggestions if requested
+    if suggest and not dry_run:
+        suggester_config = SuggesterConfig(min_confidence=min_conf)
+        suggester = PolicySuggester(suggester_config)
+        suggestions = suggester.generate_suggestions(corrections, style_prefs, implicit)
+
+        if suggestions:
+            console.print("[bold]Policy Suggestions:[/bold]")
+            console.print("[dim]Add these to your charter.yaml:[/dim]\n")
+            yaml_output = suggester.to_yaml_snippets(suggestions)
+            console.print(yaml_output)
+            console.print()
+
+            report.policy_suggestions = suggestions
+        else:
+            console.print("[dim]No policy suggestions generated at this confidence level.[/dim]")
+
+    # Summary
+    console.print("[bold]Summary:[/bold]")
+    console.print(f"  Sessions analyzed: {report.sessions_analyzed}")
+    console.print(f"  Correction patterns: {len(corrections)}")
+    console.print(f"  Style preferences: {len(style_prefs)}")
+    console.print(f"  Implicit patterns: {len(implicit)}")
+    if suggest and report.policy_suggestions:
+        console.print(f"  Policy suggestions: {len(report.policy_suggestions)}")
 
 
 def _discover_registry() -> Path | None:

@@ -126,8 +126,8 @@ class TestArtifactCompiler:
         claude_cmds = [k for k in artifacts if k.startswith(".claude/commands/")]
         augment_cmds = [k for k in artifacts if k.startswith(".augment/commands/")]
 
-        assert len(claude_cmds) == 9, f"Expected 9 Claude commands, got {len(claude_cmds)}"
-        assert len(augment_cmds) == 9, f"Expected 9 Augment commands, got {len(augment_cmds)}"
+        assert len(claude_cmds) == 10, f"Expected 10 Claude commands, got {len(claude_cmds)}"
+        assert len(augment_cmds) == 10, f"Expected 10 Augment commands, got {len(augment_cmds)}"
 
         # Check all commands use ego-* prefix
         for cmd_path in claude_cmds + augment_cmds:
@@ -540,10 +540,10 @@ class TestAgentParity:
                 f"Command {cmd_name} differs between Claude and Augment"
             )
 
-    def test_all_nine_commands_generated_for_both_agents(
+    def test_all_ten_commands_generated_for_both_agents(
         self, sample_context: CompilationContext,
     ) -> None:
-        """Verify all 9 ego-* commands are generated for both agents."""
+        """Verify all 10 ego-* commands are generated for both agents."""
         compiler = ArtifactCompiler(sample_context)
         artifacts = compiler.compile_all_artifacts()
 
@@ -557,6 +557,7 @@ class TestAgentParity:
             "ego-security.md",
             "ego-refresh.md",
             "ego-persona.md",
+            "ego-imprint.md",
         }
 
         claude_cmds = {
@@ -611,7 +612,10 @@ class TestSlashCommandContent:
             assert len(parts) >= 3, f"{cmd_name} has malformed frontmatter"
 
     def test_no_commands_invoke_cli(self, sample_context: CompilationContext) -> None:
-        """Verify no commands contain CLI invocations (pure AI prompts)."""
+        """Verify no commands contain CLI invocations (pure AI prompts).
+
+        Exception: ego-imprint is designed to run CLI commands for session analysis.
+        """
         compiler = ArtifactCompiler(sample_context)
         commands = compiler.compile_slash_commands()
 
@@ -624,7 +628,12 @@ class TestSlashCommandContent:
             "```shell\nego",
         ]
 
+        # ego-imprint is an exception - it's designed to run CLI commands
+        excluded_commands = {"ego-imprint.md"}
+
         for cmd_name, content in commands.items():
+            if cmd_name in excluded_commands:
+                continue
             for pattern in cli_patterns:
                 assert pattern not in content.lower(), (
                     f"{cmd_name} contains CLI invocation: {pattern}"

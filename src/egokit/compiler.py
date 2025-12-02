@@ -525,6 +525,7 @@ class ArtifactCompiler:
             "- `/ego-review` — Pre-commit review checklist",
             "- `/ego-security` — Activate security-focused mode",
             "- `/ego-refresh` — Re-read policy context",
+            "- `/ego-imprint` — Analyze session history for correction patterns",
             "- `/ego-persona` — Switch working persona (developer, writer, reviewer, architect)",
             "",
         ]
@@ -612,6 +613,7 @@ class ArtifactCompiler:
         commands["ego-security.md"] = self._generate_ego_security_command()
         commands["ego-refresh.md"] = self._generate_ego_refresh_command()
         commands["ego-persona.md"] = self._generate_ego_persona_command()
+        commands["ego-imprint.md"] = self._generate_ego_imprint_command()
 
         return commands
 
@@ -1130,6 +1132,64 @@ Switched to [persona] persona.
 
 Now prioritizing: [key focus areas]
 ```
+"""
+
+    def _generate_ego_imprint_command(self) -> str:
+        """Generate /ego-imprint command as pure AI prompt."""
+        return """---
+description: Analyze session history for correction patterns
+argument-hint: [--since DAYS]
+---
+
+# Imprint: Learn from Your Corrections
+
+Analyze your conversation history to identify patterns in your corrections and suggest
+policy refinements. Your corrections become your policies.
+
+## Instructions
+
+Run the `ego imprint` CLI command to analyze your AI session history:
+
+```bash
+ego imprint --since 30
+```
+
+## Available Options
+
+- `--since DAYS` — Analyze sessions from the last N days (default: 30)
+- `--claude-logs PATH` — Path to Claude Code logs (default: ~/.claude/projects/)
+- `--augment-logs PATH` — Path to Augment session exports
+- `--suggest` — Generate policy suggestions from detected patterns
+- `--explain` — Show detailed evidence for each pattern
+- `--min-confidence low|medium|high` — Filter by confidence level
+
+## What Imprint Detects
+
+1. **Explicit Corrections** — "No, use X not Y", "Actually, I meant..."
+2. **Style Preferences** — "Be concise", "Show code first"
+3. **Implicit Patterns** — Repeated requests that follow a pattern
+
+## Example Usage
+
+```bash
+# Basic analysis
+ego imprint --since 30
+
+# Generate policy suggestions with evidence
+ego imprint --suggest --explain
+
+# High-confidence patterns only
+ego imprint --suggest --min-confidence high
+```
+
+## Output
+
+Imprint will show:
+- Correction patterns with occurrence counts
+- Style preferences detected
+- Suggested charter.yaml entries (with --suggest)
+
+Add suggested rules to your `.egokit/policy-registry/charter.yaml` and run `ego apply` to update your policies.
 """
 
 
