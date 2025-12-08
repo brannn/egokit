@@ -1,0 +1,44 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "EgoKit",
+  "logo": {
+    "dark": "/logo-dark.svg",
+    "light": "/logo-light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "Documentation",
+      "pages": ["user-guide", "architecture"]
+    },
+    {
+      "group": "Resources",
+      "pages": ["changelog"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/brannn/egokit"
+  },
+  "anchors": [
+    {
+      "name": "PyPI",
+      "icon": "box",
+      "url": "https://pypi.org/project/egokit/"
+    },
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/brannn/egokit"
+    }
+  ]
+}
+

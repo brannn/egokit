@@ -1,0 +1,70 @@
+---
+title: Introduction
+description: EgoKit is a stateless, file-based compiler that transforms organizational policies into AGENTS.md content and AI-native slash command prompts.
+---
+
+# EgoKit
+
+EgoKit is a stateless, file-based compiler that transforms organizational policies into AGENTS.md content and AI-native slash command prompts. EgoKit generates the rules; modern AI coding tools interpret and execute them.
+
+## Overview
+
+EgoKit addresses a fundamental challenge with AI coding assistants: they forget organizational standards between sessions and sometimes within the same conversation. Teams repeatedly re-explain the same requirements while each developer's AI produces code that drifts from established patterns.
+
+EgoKit solves this by compiling your organization's policies into artifacts that AI coding tools consume natively. You define your standards once in a policy registry. EgoKit compiles them into AGENTS.md (the emerging standard for AI agent configuration) and a set of slash commands that reinforce those policies during development sessions.
+
+The compilation model means EgoKit has no runtime component. It reads your policy files, generates output artifacts, and exits. The AI coding tools (Claude Code, Augment, Cursor, and others) read those artifacts and enforce your policies during their normal operation.
+
+## Installation
+
+EgoKit requires Python 3.13 or later.
+
+```bash
+# Using UV (recommended)
+uv add egokit
+
+# Or using pip
+pip install egokit
+```
+
+For development installation:
+
+```bash
+git clone https://github.com/brannn/egokit.git
+cd egokit
+uv sync --dev
+```
+
+## Generated Artifacts
+
+EgoKit produces two categories of output:
+
+### AGENTS.md
+
+The primary configuration file that AI coding tools read to understand your organizational policies. AGENTS.md contains policy rules organized by severity, behavioral guidelines, and security considerations. EgoKit manages a fenced section within AGENTS.md, allowing you to maintain custom content before and after the generated policies.
+
+### Slash Commands
+
+EgoKit generates slash commands in both `.claude/commands/` and `.augment/commands/` directories:
+
+| Command | Purpose |
+|---------|---------|
+| `/ego-validate` | Check current work against policies defined in AGENTS.md |
+| `/ego-rules` | Display active policy rules and their severity levels |
+| `/ego-checkpoint` | Capture compliance state before making changes |
+| `/ego-review` | Run pre-commit review checklist |
+| `/ego-security` | Security-focused review of specified file or staged changes |
+| `/ego-refresh` | Re-read AGENTS.md to prevent policy drift |
+| `/ego-stats` | Analyze historical violation patterns |
+| `/ego-suggest` | Propose new rules based on codebase patterns |
+| `/ego-persona` | Switch working persona (developer, writer, reviewer, architect) |
+| `/ego-imprint` | Analyze session history for correction patterns |
+
+These commands are pure AI prompts that reference AGENTS.md. They contain no CLI invocations and work identically across Claude Code and Augment.
+
+## Further Reading
+
+- [Quick Start](/quickstart) - Get up and running in minutes
+- [User Guide](/user-guide) - Comprehensive usage examples and configuration reference
+- [System Architecture](/architecture) - Technical internals for contributors
+

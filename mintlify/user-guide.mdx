@@ -1,0 +1,370 @@
+---
+title: User Guide
+description: Comprehensive documentation for configuring and using EgoKit to manage AI coding agent policies across your organization.
+---
+
+# EgoKit User Guide
+
+This guide provides comprehensive documentation for configuring and using EgoKit to manage AI coding agent policies across your organization.
+
+## Installation and Setup
+
+EgoKit requires Python 3.13 or later. Install using UV (recommended) or pip:
+
+```bash
+# Using UV (recommended)
+uv add egokit
+
+# Or using pip
+pip install egokit
+```
+
+Verify the installation:
+
+```bash
+ego --version
+```
+
+For development work on EgoKit itself, clone the repository and install with UV:
+
+```bash
+git clone https://github.com/brannn/egokit.git
+cd egokit
+uv sync --dev
+```
+
+## Creating a Policy Registry
+
+A policy registry is the source of truth for your organizational standards. It contains two primary configuration files: the charter (policy rules) and the ego configuration (AI behavior settings).
+
+### Initializing a New Registry
+
+Create a new policy registry using the init command:
+
+```bash
+ego init --path /path/to/config-repo --org "Your Organization Name"
+```
+
+This generates the following structure:
+
+```
+.egokit/policy-registry/
+├── charter.yaml
+├── ego/
+│   ├── global.yaml
+│   └── teams/
+└── schemas/
+    ├── charter.schema.json
+    └── ego.schema.json
+```
+
+The registry should be version controlled and shared across your organization. Teams clone or reference this registry when applying policies to their project repositories.
+
+### Registry Location
+
+EgoKit searches for the policy registry in these locations, in order:
+
+1. Path specified by `--registry` option
+2. `.egokit/policy-registry/` in current directory
+3. `.egokit/policy-registry/` in parent directories (walking up to root)
+
+## Writing Charter Rules
+
+The charter.yaml file defines enforceable policy rules. Each rule specifies what to check and how severe violations are. AI coding agents interpret and enforce these rules.
+
+### Charter Structure
+
+```yaml
+version: 1.0.0
+scopes:
+  global:
+    security:
+      - id: SEC-001
+        rule: "Never commit credentials, API keys, or secrets to version control"
+        severity: critical
+        tags:
+          - security
+          - secrets
+      - id: SEC-002
+        rule: "Validate all external input before processing"
+        severity: critical
+        tags:
+          - security
+    code_quality:
+      - id: QUAL-001
+        rule: "All public functions must have docstrings"
+        severity: warning
+        tags:
+          - documentation
+          - quality
+metadata:
+  description: "Policy charter for Your Organization"
+  maintainer: "platform-team@example.com"
+```
+
+### Severity Levels
+
+Rules use three severity levels that determine how they appear in AGENTS.md:
+
+| Severity | Section Header | Meaning |
+|----------|---------------|---------|
+| critical | Critical (Must Follow) | Violations block work and require immediate attention |
+| warning | Required (Should Follow) | Violations should be addressed but do not block |
+| info | Recommended | Guidance for best practices |
+
+### Scope Hierarchy
+
+EgoKit supports hierarchical scopes with the following precedence (later overrides earlier):
+
+```
+global < team < project < user < session
+```
+
+Define team-specific rules by adding scope sections:
+
+```yaml
+scopes:
+  global:
+    security:
+      - id: SEC-001
+        rule: "Base security rule"
+        severity: critical
+  teams/backend:
+    security:
+      - id: SEC-001
+        rule: "Backend-specific security rule (overrides global)"
+        severity: critical
+```
+
+## Writing Ego Configurations
+
+The ego configuration controls AI agent behavior, including communication style, verbosity, and operational personas.
+
+### Global Configuration
+
+The global.yaml file establishes organization-wide defaults:
+
+```yaml
+version: 1.0.0
+ego:
+  role: "Senior Software Engineer"
+  tone:
+    voice: professional
+    verbosity: balanced
+  defaults:
+    structure: clean
+    comments: minimal
+  personas:
+    implementer:
+      focus: implementation
+      verbosity: concise
+    reviewer:
+      focus: analysis
+      verbosity: detailed
+    security:
+      focus: security
+      verbosity: thorough
+```
+
+### Team Overrides
+
+Create team-specific configurations in the `ego/teams/` directory:
+
+```yaml
+# ego/teams/backend.yaml
+version: 1.0.0
+ego:
+  role: "Backend Engineer"
+  tone:
+    voice: technical
+    verbosity: concise
+  defaults:
+    language: python
+    framework: fastapi
+```
+
+Team configurations merge with global settings. Specified values override global defaults while unspecified values inherit from global.
+
+## Running ego apply
+
+The apply command compiles your policy registry into artifacts that AI coding tools consume.
+
+### Basic Usage
+
+Apply policies to a target repository:
+
+```bash
+ego apply --repo /path/to/project --registry /path/to/policy-registry
+```
+
+If the registry is in a parent directory, EgoKit discovers it automatically:
+
+```bash
+cd /path/to/project
+ego apply
+```
+
+### Preview Mode
+
+Use dry-run to see what would be generated without writing files:
+
+```bash
+ego apply --dry-run
+```
+
+This displays the content of AGENTS.md and all slash commands to stdout.
+
+### Force Mode
+
+When an existing AGENTS.md lacks EgoKit markers, the apply command prompts for confirmation before appending content. Use the force flag to skip this prompt:
+
+```bash
+ego apply --force
+```
+
+### Output Location
+
+The apply command generates files in the target repository:
+
+```
+project/
+├── AGENTS.md
+├── .claude/
+│   └── commands/
+│       ├── ego-validate.md
+│       ├── ego-rules.md
+│       ├── ego-checkpoint.md
+│       ├── ego-review.md
+│       ├── ego-security.md
+│       ├── ego-refresh.md
+│       ├── ego-stats.md
+│       ├── ego-suggest.md
+│       └── ego-persona.md
+└── .augment/
+    └── commands/
+        └── (identical commands)
+```
+
+## Customizing AGENTS.md
+
+EgoKit uses a hybrid ownership model for AGENTS.md. You can add custom content before and after the EgoKit-managed section.
+
+### Marker-Based Sections
+
+EgoKit manages content between two HTML comment markers:
+
+```markdown
+# AGENTS.md
+
+Your custom introduction here.
+
+<!-- BEGIN-EGOKIT-POLICIES -->
+(EgoKit generates this content)
+<!-- END-EGOKIT-POLICIES -->
+
+Your custom footer content here.
+```
+
+When you run `ego apply`, EgoKit replaces only the content between the markers. Content before and after the markers remains unchanged.
+
+## Session Protocol
+
+EgoKit supports session continuity protocols for maintaining context across AI agent sessions. This feature is opt-in and activated by adding a `session:` block to your charter.yaml.
+
+### Why Session Protocols?
+
+AI coding agents operate within context windows that eventually fill up or reset. Without explicit handoff protocols, work context is lost between sessions. Session protocols define what the agent should do when starting and ending work sessions to maintain continuity.
+
+### Enabling Session Protocols
+
+Add a `session:` block to your charter.yaml:
+
+```yaml
+version: 1.0.0
+scopes:
+  global:
+    # ... your policy rules ...
+
+session:
+  startup:
+    read: ["PROGRESS.md"]
+    run: ["git status", "git log --oneline -5"]
+  shutdown:
+    update: ["PROGRESS.md"]
+    commit: false
+  progress_file: "PROGRESS.md"
+```
+
+## Slash Command Reference
+
+EgoKit generates ten slash commands that work identically in Claude Code and Augment.
+
+| Command | Purpose |
+|---------|---------|
+| `/ego-validate` | Validates current work against policies defined in AGENTS.md |
+| `/ego-rules` | Displays active policy rules organized by severity |
+| `/ego-checkpoint` | Captures a compliance snapshot before making changes |
+| `/ego-review` | Runs a pre-commit review checklist |
+| `/ego-security` | Activates security-focused analysis mode |
+| `/ego-refresh` | Re-reads AGENTS.md to prevent policy drift |
+| `/ego-stats` | Analyzes historical violation patterns from git history |
+| `/ego-suggest` | Proposes new rules based on codebase patterns |
+| `/ego-persona` | Switches the AI agent to a distinct working persona |
+| `/ego-imprint` | Analyzes your session history to detect correction patterns |
+
+## Learning from Corrections (Imprint)
+
+Over time, developers establish implicit preferences through repeated corrections to AI assistants. Phrases like "No, use snake_case not camelCase" or "Actually, always include type hints" represent policies that exist only in the developer's head. The Imprint feature detects these patterns and suggests explicit charter rules.
+
+### How Imprint Works
+
+The imprint command parses session logs from Claude Code and Augment, searching for correction patterns in your messages to the AI. It applies regex-based heuristics to identify three types of patterns:
+
+**Explicit Corrections** occur when you directly correct the AI's output. Phrases beginning with "No,", "Actually,", "Instead,", or "Use X not Y" indicate a preference the AI violated.
+
+**Style Preferences** are detected when you repeatedly request a particular style of interaction. Messages containing "be concise", "show code first", or "explain step by step" indicate communication preferences.
+
+**Implicit Patterns** emerge from frequency analysis. If you frequently reference a particular policy ID or repeatedly make similar requests, Imprint identifies these as candidates for explicit rules.
+
+### Running ego imprint
+
+The basic command scans recent sessions and displays detected patterns:
+
+```bash
+ego imprint --since 30
+```
+
+To generate policy suggestions from detected patterns:
+
+```bash
+ego imprint --since 30 --suggest
+```
+
+For detailed evidence showing which messages triggered each pattern:
+
+```bash
+ego imprint --since 30 --suggest --explain
+```
+
+## Troubleshooting
+
+### Registry Not Found
+
+If EgoKit cannot locate your policy registry, specify the path explicitly:
+
+```bash
+ego apply --registry /path/to/policy-registry
+```
+
+### Schema Validation Errors
+
+Charter and ego configuration files must conform to their JSON schemas. Run the doctor command to validate your configuration:
+
+```bash
+ego doctor --registry /path/to/policy-registry
+```
+
+### Marker Conflicts
+
+If AGENTS.md contains malformed markers (only begin or only end, or markers in wrong order), EgoKit treats the file as having no markers. Fix the markers manually or delete the file and regenerate.
+

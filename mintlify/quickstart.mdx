@@ -1,0 +1,64 @@
+---
+title: Quick Start
+description: Get EgoKit up and running in minutes.
+---
+
+# Quick Start
+
+Initialize a policy registry in your organization's configuration repository:
+
+```bash
+ego init --org "Your Organization"
+```
+
+This creates the policy registry structure:
+
+```
+.egokit/policy-registry/
+├── charter.yaml          # Policy rules with severity and detectors
+├── ego/
+│   ├── global.yaml       # Organization-wide AI behavior settings
+│   └── teams/            # Team-specific overrides
+└── schemas/              # JSON Schema validation files
+```
+
+Define your policies in the charter and ego configuration files, then apply them to any project repository:
+
+```bash
+ego apply --repo /path/to/project --registry /path/to/policy-registry
+```
+
+After generating the initial registry, use your AI coding assistant to refine the charter rules and ego settings based on your team's specific requirements. You can use your AI assistant to help develop and maintain these files once it is aware of the EgoKit schema in the registry's schemas/ directory.
+
+EgoKit generates AGENTS.md and slash commands in the target repository. AI coding tools read these files automatically.
+
+## Command Reference
+
+| Command | Description |
+|---------|-------------|
+| `ego init` | Create a new policy registry with starter templates |
+| `ego apply` | Compile policies into AGENTS.md and slash commands |
+| `ego doctor` | Display current policy configuration and validation status |
+| `ego watch` | Monitor registry for changes and recompile automatically |
+
+### Common Options
+
+The `apply` command accepts these options:
+
+| Option | Description |
+|--------|-------------|
+| `--repo PATH` | Target repository for generated artifacts |
+| `--registry PATH` | Source policy registry location |
+| `--dry-run` | Preview generated content without writing files |
+| `--force` | Overwrite existing AGENTS.md without confirmation |
+
+## Learning from Corrections (Imprint)
+
+EgoKit can analyze your AI session history to detect patterns in your corrections. When you repeatedly tell an AI assistant "No, use X not Y" or "Actually, I prefer...", these corrections represent implicit policies. The `ego imprint` command scans session logs and suggests charter rules based on detected patterns.
+
+```bash
+ego imprint --since 30 --suggest
+```
+
+See the [User Guide](/user-guide) for detailed imprint configuration and usage.
+
